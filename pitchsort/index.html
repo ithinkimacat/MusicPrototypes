@@ -54,7 +54,8 @@
   .kchip.pulse { animation:chippulse 1s ease-in-out infinite; border-color:#9fd0aa; color:#cfffd9 }
   @keyframes chippulse { 50% { transform:translateY(-2px); box-shadow:0 3px 10px #9fd0aa44 } }
 
-  #banner { position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:20 }
+  #banner { position:fixed; top:0; right:0; bottom:0; left:0; /* inset:0 */ inset:0;
+            display:grid; place-items:center; pointer-events:none; z-index:20 }
   #banner span { font-size:3.4em; font-weight:800; letter-spacing:.08em; color:#9fffb0; opacity:0;
                  text-shadow:0 0 60px #4f86, 0 0 24px #4f84; }
   #banner.show span { animation:banner 2.4s cubic-bezier(.2,1.2,.3,1) forwards }

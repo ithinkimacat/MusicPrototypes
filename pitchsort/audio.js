@@ -1,5 +1,12 @@
 // audio.js — synth + playback engine. Pure tones, stereo pan per column.
-export const ctx = new AudioContext();
+export const ctx = new (window.AudioContext || window.webkitAudioContext)(); // Safari <15 prefix
+
+// StereoPanner missing on old Safari -> plain gain (graceful mono, no crash)
+const makePanner = (pan = 0) => {
+  const n = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
+  if (n.pan) n.pan.value = pan;
+  return n;
+};
 
 // master bus: compressor catches chord stacks before they hard-clip (= the clicks)
 const comp = ctx.createDynamicsCompressor();
@@ -9,12 +16,12 @@ export const master = ctx.createGain();
 master.connect(comp).connect(ctx.destination);
 
 // volume 0..1, persisted
-let vol = Number(localStorage.getItem('ps-vol') ?? 0.9);
+let vol = Number(localStorage.getItem('ps-vol') ?? 0.9); // getItem safe even where setItem throws
 master.gain.value = vol;
 export function setVolume(v) {
   vol = Math.round(Math.max(0, Math.min(1, v)) * 20) / 20; // 5% steps
   master.gain.setTargetAtTime(vol, ctx.currentTime, 0.03);
-  localStorage.setItem('ps-vol', vol);
+  try { localStorage.setItem('ps-vol', vol); } catch {} // private-mode Safari throws
   return vol;
 }
 export const getVolume = () => vol;
@@ -42,8 +49,7 @@ export function playNote(midi, { pan = 0, dur = 0.5, wrong = false, sustain = fa
     osc.connect(ws); head = ws;
   }
 
-  const panner = ctx.createStereoPanner();
-  panner.pan.value = pan;
+  const panner = makePanner(pan);
   head.connect(amp).connect(panner).connect(master);
   osc.start(t); osc.stop(t + endDur + 0.05);
 }
@@ -64,7 +70,7 @@ export function startCaptureVoice(midi, pan = 0) {
   const osc = ctx.createOscillator(); // plain sine — matches normal note timbre
   osc.frequency.value = midiToFreq(midi);
   const gate = ctx.createGain(); gate.gain.value = 0;
-  const panner = ctx.createStereoPanner(); panner.pan.value = pan;
+  const panner = makePanner(pan);
   const echo = ctx.createDelay(); echo.delayTime.value = 0.35;
   const fb = ctx.createGain(); fb.gain.value = 0.25;
   const wet = ctx.createGain(); wet.gain.value = 0.35;
@@ -85,7 +91,7 @@ export function startCaptureVoice(midi, pan = 0) {
 
   let dead = false;
   return {
-    setPan(v) { panner.pan.setTargetAtTime(v, ctx.currentTime, 0.08); }, // exponential glide, no ramp conflicts
+    setPan(v) { if (panner.pan) panner.pan.setTargetAtTime(v, ctx.currentTime, 0.08); }, // exponential glide, no ramp conflicts
     stop() {
       if (dead) return; dead = true;
       clearInterval(iv);
