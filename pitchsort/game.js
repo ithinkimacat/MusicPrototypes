@@ -1,47 +1,53 @@
-// game.js — state machine + render (debug screen only).
+// game.js — state machine + render (debug screen only, mirrors stereo axis).
 import { ctx, playNote, playChord } from './audio.js';
 import { Pad } from './input.js';
-import { makeLevel } from './levels.js';
+import { makeLevel, deal } from './levels.js';
 
-const COLS = { L: 'left', C: 'center', R: 'right' };
 const ORDER = ['L', 'C', 'R'];
+const PANFOR = { L: -0.8, C: 0, R: 0.8 };
 
 const S = {
   phase: 'intro', // intro | play | graded
   level: 1,
   cols: { L: [], C: [], R: [] },
   cursor: { col: 'C', row: 0 },
-  captured: null, // { midi, srcCol, srcRow, moves }
+  captured: null, // { midi, srcCol, srcRow }
   targets: null,
   moves: 0,
   t0: 0,
-  partial: true, // subtle sustain feedback, off at high difficulty
 };
 
-function loadLevel(n, initialCenter) {
-  const lv = initialCenter ? S.deal : makeLevel(n);
-  S.deal = lv;
-  S.cols = { L: [], C: initialCenter ? [...initialCenter] : lv.center, R: [] };
-  S.targets = { L: lv.targetL, R: lv.targetR };
+function loadLevel(n, sameDeal) {
+  const d = sameDeal ? S.deal : deal(makeLevel(n));
+  S.deal = d;
+  S.cols = { L: [], C: [...d.center], R: [] };
+  S.targets = { L: d.targetL, R: d.targetR };
   S.cursor = { col: 'C', row: 0 };
-  S.captured = null; S.moves = 0; S.phase = 'intro'; S.partial = n <= 6; S.score = undefined;
-  playChord(lv.targetL, 'left');
-  playChord(lv.targetR, 'right', { delay: 1.4 });
+  S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined;
+  playChord(d.targetL, 'left');
+  playChord(d.targetR, 'right', { delay: 1.4 });
   setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); render(); }, 3000);
 }
-const retry = () => loadLevel(S.level, S.deal.center); // same deal, no re-shuffle
 
 function colArr(k = S.cursor.col) { return S.cols[k]; }
 const clampRow = () => { S.cursor.row = Math.max(0, Math.min(S.cursor.row, colArr().length - (S.captured ? 0 : 1))); };
 
 function hearCursor() {
   const n = S.captured?.midi ?? colArr()[S.cursor.row];
-  if (n !== undefined) playNote(n, { pan: { L: -0.8, C: 0, R: 0.8 }[S.cursor.col], captured: !!S.captured && S.captured.midi === n });
+  if (n !== undefined) playNote(n, { pan: PANFOR[S.cursor.col], captured: S.captured?.midi === n });
+}
+
+function isPass() {
+  const match = (arr, target) => arr.length === target.length && arr.every((m) => target.includes(m));
+  return S.cols.C.length === 0 && match(S.cols.L, S.targets.L) && match(S.cols.R, S.targets.R);
 }
 
 function onButton(b) {
   ctx.resume();
-  if (S.phase === 'graded') { if (b === 'START') (S.pass ? loadLevel(S.level + 1) : retry()); return; }
+  if (S.phase === 'graded') {
+    if (b === 'START') loadLevel(S.pass ? S.level + 1 : S.level, !S.pass);
+    return;
+  }
   if (S.phase !== 'play') return;
 
   switch (b) {
@@ -50,10 +56,9 @@ function onButton(b) {
       if (i >= 0 && i < 3) { S.cursor.col = ORDER[i]; clampRow(); hearCursor(); render(); }
       break;
     }
-    case 'UP': case 'DOWN': {
+    case 'UP': case 'DOWN':
       S.cursor.row += b === 'DOWN' ? 1 : -1; clampRow(); hearCursor(); render();
       break;
-    }
     case 'A': {
       if (S.captured) break;
       const arr = colArr();
@@ -64,14 +69,13 @@ function onButton(b) {
       hearCursor(); render();
       break;
     }
-    case 'B': {
-      if (S.captured) { // cancel capture → back to origin
+    case 'B':
+      if (S.captured) {
         S.cols[S.captured.srcCol].splice(S.captured.srcRow, 0, S.captured.midi);
         S.captured = null; S.moves--; hearCursor(); render();
       } else playChord(S.cols.R, 'right');
       break;
-    }
-    case 'X': playChord(S.cols.L, 'left', { sustain: true }); break;
+    case 'X': playChord(S.cols.L, 'left'); break;
     case 'Y': playChord(S.cols.C, 'center'); break;
     case 'LT': playChord(S.targets.L, 'left'); break;
     case 'RT': playChord(S.targets.R, 'right'); break;
@@ -79,7 +83,7 @@ function onButton(b) {
   }
 }
 
-// A release = place (not an edge event — watch held state in tick)
+// A release = place (held-state poll, not an edge event)
 let aHeldPrev = false;
 function tickRelease(aHeld) {
   if (aHeldPrev && !aHeld && S.captured) {
@@ -90,19 +94,12 @@ function tickRelease(aHeld) {
   aHeldPrev = aHeld;
 }
 
+// no score — pass/fail only. Feedback: player chords (wrong notes distorted), then targets.
 function grade() {
   S.phase = 'graded';
-  const inChord = (arr, target) => arr.filter((m) => target.includes(m));
-  const accL = inChord(S.cols.L, S.targets.L).length / S.targets.L.length;
-  const accR = inChord(S.cols.R, S.targets.R).length / S.targets.R.length;
-  S.pass = accL === 1 && accR === 1 && S.cols.L.length === S.targets.L.length && S.cols.R.length === S.targets.R.length;
-  const optimal = S.targets.L.length + S.targets.R.length; // 1 capture per note
-  const eff = Math.max(0, 1 - Math.max(0, S.moves - optimal) / optimal);
-  const secs = (performance.now() - S.t0) / 1000;
-  const time = Math.max(0, 1 - secs / 120);
-  S.score = Math.round(100 * (0.6 * (accL + accR) / 2 + 0.2 * eff + 0.2 * time));
-  // grading playback: player chords, wrong notes distorted
-  const playCol = (arr, col, baseDelay) => arr.forEach((m, i) => playNote(m, { pan: col === 'L' ? -0.8 : 0.8, dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
+  S.pass = isPass();
+  const playCol = (arr, col, baseDelay) => arr.forEach((m, i) =>
+    playNote(m, { pan: PANFOR[col], dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
   playCol(S.cols.L, 'L', 0);
   playCol(S.cols.R, 'R', 1.6);
   playChord(S.targets.L, 'left', { delay: 3.4 });
@@ -112,19 +109,19 @@ function grade() {
 
 function render() {
   const el = document.getElementById('debug');
-  const fmt = (k) => S.cols[k].map((m, i) => {
-    const cur = S.cursor.col === k && S.cursor.row === i ? '>' : ' ';
-    const held = S.captured?.midi === m ? '*' : '';
-    return `${cur}${m}${held}`;
-  }).join(' ');
-  el.textContent = [
-    `PitchSort Lv${S.level} ${S.phase}`,
-    `L: ${fmt('L')}`,
-    `C: ${fmt('C')}`,
-    `R: ${fmt('R')}`,
-    `moves:${S.moves} ${S.score !== undefined ? 'score:' + S.score : ''} cursor:${S.cursor.col}${S.cursor.row}`,
-    `targets L[${S.targets.L}] R[${S.targets.R}]`,
-  ].join('\n');
+  const col = (k) => {
+    const rows = S.cols[k].map((m, i) => {
+      const cur = S.cursor.col === k && S.cursor.row === i ? '>' : ' ';
+      const held = S.captured?.midi === m ? '*' : '';
+      return `${cur}${m}${held}`;
+    });
+    if (S.captured && S.cursor.col === k) rows.splice(S.cursor.row, 0, `[${S.captured.midi}]`);
+    return `<div class="col"><h3>${k === 'L' ? 'LEFT' : k === 'R' ? 'RIGHT' : 'CENTER'}</h3>${rows.join('<br>') || '&nbsp;'}</div>`;
+  };
+  el.innerHTML = `
+    <h2>PitchSort — Level ${S.level} ${S.phase === 'graded' ? (S.pass ? 'PASS ✓ → START for next' : 'FAIL ✗ → START to retry') : ''}</h2>
+    <div class="row">${col('L')}${col('C')}${col('R')}</div>
+    <p>moves: ${S.moves} &nbsp; targets: L[${S.targets.L}] R[${S.targets.R}]</p>`;
 }
 
 const pad = new Pad(onButton);
