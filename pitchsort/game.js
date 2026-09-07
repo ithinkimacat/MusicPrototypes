@@ -27,7 +27,7 @@ function loadLevel(n, sameDeal) {
   render(); // clears win/fade classes → fades in
   playChord(d.targetL, 'left');
   playChord(d.targetR, 'right', { delay: 1.4 });
-  setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); render(); }, 3000);
+  setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); render(); }, 2200);
 }
 
 // scheduled DOM flashes synced to WebAudio note onsets (audio scheduled ahead, timers approximate it)
@@ -38,7 +38,7 @@ function flashNote(m, delay, dur = 1.2) {
     setTimeout(() => n?.classList.remove('sounding'), dur * 1000);
   }, delay * 1000);
 }
-function flashCol(k, delay, dur = 1.5) {
+function flashCol(k, delay, dur = 1.3) { // chord notes: dur 1.2s, last onset +0.09s
   setTimeout(() => {
     const c = document.querySelector(`[data-col="${k}"]`);
     c?.classList.add('sounding');
@@ -111,8 +111,8 @@ function tickRelease(aHeld) {
     hearCursor(); render();
     if (isPass()) { // auto-win: play feedback, then next level
       S.pass = true; grade();
-      setTimeout(() => document.getElementById('debug').classList.add('fade'), 3800);
-      setTimeout(() => loadLevel(S.level + 1), 4200); // jingle + both chords ≈ 4s
+      setTimeout(() => document.getElementById('debug').classList.add('fade'), 2600);
+      setTimeout(() => loadLevel(S.level + 1), 2900); // jingle + chords ≈ 2.9s
     }
   }
   aHeldPrev = aHeld;
@@ -124,10 +124,10 @@ function grade() {
   S.phase = 'graded';
   if (S.pass) {
     [60, 64, 67, 72].forEach((m, i) => playNote(m, { dur: 0.25, delay: i * 0.13 })); // jingle
-    playChord(S.cols.L, 'left', { delay: 1.0 });
-    S.cols.L.forEach((m, i) => flashNote(m, 1.0 + i * 0.03));
-    playChord(S.cols.R, 'right', { delay: 2.6 });
-    S.cols.R.forEach((m, i) => flashNote(m, 2.6 + i * 0.03));
+    playChord(S.cols.L, 'left', { delay: 0.6 });
+    S.cols.L.forEach((m, i) => flashNote(m, 0.6 + i * 0.03));
+    playChord(S.cols.R, 'right', { delay: 1.9 });
+    S.cols.R.forEach((m, i) => flashNote(m, 1.9 + i * 0.03));
   } else {
     const playCol = (arr, col, baseDelay) => arr.forEach((m, i) =>
       playNote(m, { pan: PANFOR[col], dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
@@ -148,7 +148,7 @@ function noteHtml(m, k, i) {
     S.cursor.col === k && S.cursor.row === i && !S.captured ? 'cursor' : '',
     S.captured?.midi === m ? 'captured' : '',
   ].join(' ');
-  return `<span class="${cls}" data-midi="${m}" style="background:${midiColor(m)}">${m}</span>`;
+  return `<span class="${cls}" data-midi="${m}" style="background:${midiColor(m)}"></span>`;
 }
 
 function render() {
