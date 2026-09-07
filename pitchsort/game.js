@@ -241,27 +241,61 @@ function start() {
   ctx.resume(); // AudioContext stays suspended until a user gesture — gate on any input
   loadLevel(1);
 }
-addEventListener('keydown', start);
+// keyboard: arrows/WASD move, Space = grab(hold)/drop, J/K/L = play L/C/R,
+// Q/E = target previews, Enter = submit, Esc = cancel grab
+const KEYMAP = { arrowup: 'UP', w: 'UP', arrowdown: 'DOWN', s: 'DOWN', arrowleft: 'LEFT', a: 'LEFT', arrowright: 'RIGHT', d: 'RIGHT', j: 'X', k: 'Y', l: 'B', q: 'LT', e: 'RT', enter: 'START', escape: 'ESC' };
+const keyHeld = {};
+let keyUsed = false;
 addEventListener('keydown', (e) => {
-  if (S.phase !== 'play') return;
-  if (e.key === '-') { setVolume(getVolume() - 0.1); render(); }
-  if (e.key === '=') { setVolume(getVolume() + 0.1); render(); }
+  const k = e.key.toLowerCase();
+  if (k === ' ' || KEYMAP[k]) { keyUsed = true; e.preventDefault(); }
+  if (S.phase === 'title') { start(); return; }
+  if (k === ' ') { if (!keyHeld.space) { keyHeld.space = true; onButton('A'); } return; }
+  if (k === '-') { setVolume(getVolume() - 0.1); render(); return; }
+  if (k === '=') { setVolume(getVolume() + 0.1); render(); return; }
+  const b = KEYMAP[k];
+  if (!b || keyHeld[b]) return;
+  keyHeld[b] = true;
+  onButton(b === 'ESC' && S.captured ? 'B' : b);
 });
+addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === ' ') keyHeld.space = false;
+  const b = KEYMAP[k];
+  if (b) keyHeld[b] = false;
+});
+const held = (b) => pad.held(b) || (b === 'A' ? !!keyHeld.space : !!keyHeld[b]);
 addEventListener('pointerdown', start);
 
 // control hint for whatever pad is connected (defaults to Xbox labels until one is)
+const ICON_PAD = `<svg viewBox="0 0 48 30" width="38" fill="none" stroke="#888" stroke-width="1.6">
+  <rect x="2" y="4" width="44" height="22" rx="11" fill="#ffffff08"/>
+  <path d="M12 10v12M6 16h12"/><circle cx="34" cy="11" r="1.8" fill="#888"/><circle cx="40" cy="16" r="1.8" fill="#888"/><circle cx="34" cy="21" r="1.8" fill="#888"/><circle cx="28" cy="16" r="1.8" fill="#888"/></svg>`;
+const ICON_KEY = `<svg viewBox="0 0 48 30" width="38" fill="none" stroke="#888" stroke-width="1.6">
+  <rect x="2" y="4" width="44" height="22" rx="4" fill="#ffffff08"/>
+  ${[8, 16, 24, 32, 40].map((x) => `<rect x="${x - 2.5}" y="8" width="5" height="5" rx="1"/>`).join('')}
+  <rect x="12" y="17" width="24" height="5" rx="1"/></svg>`;
+
 function controlsHtml() {
   const n = (pad.info ?? detectFamily()).names;
   const k = (label, action) => `<span class="ctl"><b class="kchip">${label}</b>${action}</span>`;
-  return `<div class="controls">
-    ${k('◀▲▼▶', 'move')}
-    ${k(n.bottom, 'hold = grab · release = drop')}
-    ${k(n.left, 'play Left')}
-    ${k(n.right, 'play Right')}
-    ${k(n.top, 'play Center')}
-    ${k(n.lt, 'target L')}
-    ${k(n.rt, 'target R')}
-    ${k((pad.info?.family === 'ps' ? 'L1/R1' : 'LB/RB'), 'volume ' + Math.round(getVolume() * 100) + '%')}
+  const bumpers = pad.info?.family === 'ps' ? 'L1/R1' : 'LB/RB';
+  return `<div class="ctl-groups">
+    <div class="ctl-group ${pad.info ? '' : 'dim'}">
+      <div class="ctl-head">${ICON_PAD} <span>gamepad${pad.info ? ' · ' + pad.info.family.toUpperCase() : ''}</span></div>
+      <div class="controls">
+        ${k('◀▲▼▶', 'move')} ${k(n.bottom, 'hold = grab, release = drop')} ${k(n.left, 'play Left')} ${k(n.right, 'play Right')}
+        ${k(n.top, 'play Center')} ${k(n.lt, 'target L')} ${k(n.rt, 'target R')} ${k(bumpers, 'volume')}
+      </div>
+    </div>
+    <div class="ctl-group ${keyUsed || !pad.info ? '' : 'dim'}">
+      <div class="ctl-head">${ICON_KEY} <span>keyboard</span></div>
+      <div class="controls">
+        ${k('WASD / ←↑↓→', 'move')} ${k('Space', 'hold = grab, release = drop')} ${k('Esc', 'cancel grab')}
+        ${k('J', 'play Left')} ${k('K', 'play Center')} ${k('L', 'play Right')}
+        ${k('Q', 'target L')} ${k('E', 'target R')} ${k('- =', 'volume')}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -271,17 +305,17 @@ function renderTitle() {
     <h2>PITCHSORT</h2>
     <p class="meta">Hear the chords. Sort the notes. Left vs Right.</p>
     <p style="margin-top:2em;animation:glow 1.6s ease-in-out infinite">PRESS ANY BUTTON TO START</p>
-    <p class="meta">${fam ? fam + ' pad connected ✓' : 'Gamepad supported: Xbox · PlayStation · Switch Pro. Press any pad button to detect.'}</p>
+    <p class="meta">${fam ? fam + ' pad connected ✓' : 'Play with gamepad (Xbox · PlayStation · Switch Pro) or keyboard.'}</p>
     ${controlsHtml()}`;
 }
 addEventListener('gamepadconnected', () => { if (S.phase === 'title') renderTitle(); });
-// held-button auto-repeat: 300ms initial delay, then 90ms steps — fixes sluggish D-pad
+// held-button auto-repeat: 300ms initial delay, then 90ms steps (pad + keys)
 const repeat = { UP: 0, DOWN: 0, LEFT: 0, RIGHT: 0 };
 (function loop(t = 0) {
   pad.poll();
-  tickRelease(pad.held('A'));
+  tickRelease(held('A'));
   for (const b of Object.keys(repeat)) {
-    if (!pad.held(b)) { repeat[b] = 0; continue; }
+    if (!held(b)) { repeat[b] = 0; continue; }
     if (!repeat[b]) { repeat[b] = t + 300; continue; } // edge already fired
     if (t >= repeat[b]) { onButton(b); repeat[b] = t + 90; }
   }
