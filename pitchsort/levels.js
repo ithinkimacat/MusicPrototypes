@@ -49,6 +49,18 @@ export function makeLevel(n) {
   return { targetL: ch(rootL, qA).slice(0, size), targetR: ch(rootR, qB).slice(0, size) };
 }
 
-export const deal = ({ targetL, targetR, hint }) => ({ targetL, targetR, hint, center: shuffle([...targetL, ...targetR]) });
+export const deal = ({ targetL, targetR, hint }) => {
+  // disguise the L-low / R-high pattern: random side swap + independent octave shifts
+  let pair = [targetL, targetR];
+  if (Math.random() < 0.5) pair.reverse();
+  pair = pair.map((c) => {
+    const shift = [-12, 0, 12][Math.floor(Math.random() * 3)];
+    const out = c.map((m) => m + shift);
+    return out.every((m) => m >= 36 && m <= 84) ? out : c; // stay in a pleasant band
+  });
+  let [a, b] = pair;
+  if (a.some((m) => b.includes(m))) [a, b] = pair.map((c) => c.map((m) => m)); // overlap after shift → unshifted
+  return { targetL: a, targetR: b, hint, center: shuffle([...a, ...b]) };
+};
 
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
