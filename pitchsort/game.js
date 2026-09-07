@@ -215,9 +215,9 @@ function render() {
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `
     <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort — Level ${S.level}${S.phase === 'graded' ? (S.pass ? ' ✓' : ' ✗ retry (START)') : ''}</h2>
+    ${S.hint && S.phase === 'play' ? `<p class="tut">${S.hint}</p>` : ''}
     <div class="row">${col('L')}${col('C')}${col('R')}</div>
     <p class="meta">moves: ${S.moves}</p>
-    ${S.hint && S.phase === 'play' ? `<p class="tut">${S.hint}</p>` : ''}
     ${controlsHtml()}`;
 
   el.querySelectorAll('.note[data-midi]').forEach((n) => {

@@ -9,7 +9,7 @@
   h2 { font-size:1.05em; font-weight:600; letter-spacing:.08em; color:#999; transition:color .2s }
   h2.win { color:#8fffa8 }
 
-  .row { display:flex; gap:2em; align-items:flex-start }
+  .row { display:flex; gap:2em; align-items:flex-start; justify-content:center }
   .col { min-width:4.6em; min-height:13em; padding:.9em 1em; border-radius:14px;
          background:#ffffff08; border:1px solid #ffffff10;
          transition:border-color .2s }
@@ -42,8 +42,9 @@
   .ctl { display:flex; align-items:center; gap:.45em; color:#777; font-size:.8em }
   .kchip { border:1px solid #444; border-bottom-width:2px; border-radius:6px; padding:.1em .5em;
            background:#ffffff10; color:#ccc; font-weight:600 }
-  .tut { color:#9fc4ff; font-size:.95em; max-width:38em; margin:1em auto 0; line-height:1.5;
-         animation:tutin .5s ease-out }
+  .tut { color:#b8d4ff; font-size:1.1em; font-weight:500; max-width:34em; margin:0 auto 1.2em;
+         line-height:1.6; white-space:pre-line; padding:.7em 1.2em; border-radius:12px;
+         background:#9fc4ff14; border:1px solid #9fc4ff30; animation:tutin .5s ease-out }
   @keyframes tutin { from { opacity:0; transform:translateY(6px) } }
 
   #banner { position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:20 }

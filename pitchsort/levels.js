@@ -1,37 +1,55 @@
-// levels.js — guided progression. 10 curated levels with high contrast between
-// L and R chords (different registers + qualities) so notes never sound alike.
-// After that, a generated ladder keeps the same separation rule.
-const T = (root, ...intervals) => intervals.map((i) => root + i);
+// levels.js — 20 curated levels: consonant, related-key chord pairs (maj/min/sus/
+// add9/6/maj7/m7 — no dim/aug). Ramp: 1 note -> dyads -> triads -> 4-note chords,
+// while the register gap between L and R slowly shrinks (ear-only discrimination).
+const Q = {
+  one: [0], two: [0, 7], maj: [0, 4, 7], min: [0, 3, 7], sus2: [0, 2, 7],
+  sus4: [0, 5, 7], 6: [0, 4, 7, 9], add9: [0, 4, 7, 14], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10],
+};
+const ch = (root, q) => Q[q].map((i) => root + i);
 
-// contrast rule for Lv1-10: L low (A2–D3 region), R high (>12 semitones above),
-// alternating qualities (major vs minor vs add9) so timbres differ per side.
-export const TUTORIAL = [
-  { targetL: T(50, 0),           targetR: T(74, 0),
-    hint: 'Hold grab (bottom button) to pick up a note — move it, release to drop. Left chord sounds LEFT, right chord sounds RIGHT.' },
-  { targetL: T(50, 0),           targetR: T(72, 0, 7),
-    hint: 'Use LT / RT (triggers) to hear the target chords again.' },
-  { targetL: T(48, 0, 7),        targetR: T(74, 0),
-    hint: 'X (left face button) plays your Left column. B (right face) plays Right. Y plays Center.' },
-  { targetL: T(48, 0, 4, 7),     targetR: T(72, 0, 3, 7) },  // maj triad vs min triad
-  { targetL: T(45, 0, 3, 7),     targetR: T(69, 0, 4, 7) },  // swapped qualities, wider gap
-  { targetL: T(43, 0, 4, 7),     targetR: T(67, 0, 3, 10) }, // maj vs m7
-  { targetL: T(45, 0, 4, 7, 14), targetR: T(70, 0, 3, 7) },  // add9 vs min
-  { targetL: T(41, 0, 3, 7, 10), targetR: T(66, 0, 4, 7, 11) }, // m7 vs maj7
-  { targetL: T(43, 0, 4, 7, 11), targetR: T(72, 0, 3, 7, 10) },
-  { targetL: T(38, 0, 4, 7, 10), targetR: T(64, 0, 3, 7, 14) },
+const HINT = {
+  GRAB: 'Hold grab (bottom face button / Space) to pick up a note — move it, release to drop.\nListen: the LEFT chord pans left, the RIGHT chord pans right.',
+  TRIGGERS: 'Use LT/RT (triggers / Q E) to replay the target chords any time.',
+  AUDITION: 'X / B (face buttons / J L) plays your Left and Right columns. Y / K plays Center.\nBuild the targets, Center empty = win!',
+};
+
+// [level, rootL, qL, rootR, qR, hint?]
+const FIRST20 = [
+  [1, 50, 'one', 74, 'one', HINT.GRAB],
+  [2, 48, 'one', 72, 'one', HINT.TRIGGERS],
+  [3, 50, 'two', 74, 'two', HINT.AUDITION],
+  [4, 48, 'maj', 67, 'sus2'],
+  [5, 45, 'min', 69, 'maj'],
+  [6, 41, 'maj', 65, 'min'],
+  [7, 43, 'sus4', 67, 'min'],
+  [8, 48, 'maj7', 72, 'maj'],
+  [9, 45, 'm7', 67, '6'],
+  [10, 50, 'add9', 71, 'sus2'],
+  [11, 43, 'maj7', 62, 'm7'],
+  [12, 48, '6', 64, 'min'],
+  [13, 41, 'min', 60, 'maj7'],
+  [14, 45, 'sus2', 64, 'add9'],
+  [15, 38, 'maj7', 59, 'm7'],
+  [16, 50, 'm7', 71, 'maj'],
+  [17, 46, 'add9', 64, 'maj7'],
+  [18, 43, 'sus4', 62, 'maj'],
+  [19, 48, 'm7', 64, '6'],
+  [20, 41, 'maj7', 57, 'm7'], // gap now 16 semitones — register no longer gives it away
 ];
 
-// generated ladder: separation guaranteed (R root = L root + 17..25 semitones,
-// quality flips per level so the two chords never share a voicing)
-const MAJ = [0, 4, 7, 11], MIN = [0, 3, 7, 10];
-
+// generated ladder past 20: >=16 semitone root separation, quality flip per level,
+// size creeps 4 -> 5
 export function makeLevel(n) {
-  if (n <= TUTORIAL.length) return { ...TUTORIAL[n - 1] };
-  const size = Math.min(3 + Math.floor((n - 10) / 2), 5);
-  const rootL = 38 + ((n * 5) % 8);              // wanders in low register
-  const rootR = rootL + 17 + ((n * 3) % 9);      // always 17-25 above
-  const qL = n % 2 ? MAJ : MIN, qR = n % 2 ? MIN : MAJ;
-  return { targetL: qL.slice(0, size).map((i) => rootL + i), targetR: qR.slice(0, size).map((i) => rootR + i) };
+  const row = FIRST20.find(([l]) => l === n);
+  if (row) {
+    const [, rL, qL, rR, qR, hint] = row;
+    return { targetL: ch(rL, qL), targetR: ch(rR, qR), hint };
+  }
+  const size = Math.min(4 + Math.floor((n - 21) / 3), 5);
+  const rootL = 38 + ((n * 5) % 8);
+  const rootR = rootL + 16 + ((n * 3) % 6);
+  const qA = n % 2 ? 'maj7' : 'm7', qB = n % 2 ? 'm7' : 'maj7';
+  return { targetL: ch(rootL, qA).slice(0, size), targetR: ch(rootR, qB).slice(0, size) };
 }
 
 export const deal = ({ targetL, targetR, hint }) => ({ targetL, targetR, hint, center: shuffle([...targetL, ...targetR]) });
