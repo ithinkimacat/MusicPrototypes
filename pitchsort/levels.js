@@ -1,56 +1,67 @@
-// levels.js — 20 curated levels: consonant, related-key chord pairs (maj/min/sus/
-// add9/6/maj7/m7 — no dim/aug). Ramp: 1 note -> dyads -> triads -> 4-note chords,
-// while the register gap between L and R slowly shrinks (ear-only discrimination).
-const Q = {
-  one: [0], two: [0, 7], maj: [0, 4, 7], min: [0, 3, 7], sus2: [0, 2, 7],
-  sus4: [0, 5, 7], 6: [0, 4, 7, 9], add9: [0, 4, 7, 14], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10],
-};
-const ch = (root, q) => Q[q].map((i) => root + i);
+// levels.js — 20 curated levels built from ONE key per level: L and R chords are
+// diatonic to the same scale (real chord progressions: I–V, vi–IV, ii–V…), so the
+// two harmonies always sound like they belong to a song. Early = major keys,
+// later = natural minor. Size ramps 1->2->3->4 notes; register gap ~2 octaves shrinks late.
+const SCALES = { maj: [0, 2, 4, 5, 7, 9, 11], min: [0, 2, 3, 5, 7, 8, 10] };
+
+// diatonic chord: stack thirds from scale degree inside scale
+function diatonic(root, scaleName, degree, size) {
+  const sc = SCALES[scaleName];
+  const out = [];
+  for (let k = 0; k < size; k++) {
+    const d = degree + k * 2;
+    out.push(root + 12 * Math.floor(d / 7) + sc[d % 7]);
+  }
+  return out;
+}
 
 // tutorial = which input to highlight (pulsing chip), not text
-const HINT = { GRAB: 'grab', TRIGGERS: 'triggers', AUDITION: 'play' };
-
-// [level, rootL, qL, rootR, qR, tutorial-highlight?]
+// [level, keyRootLow, scale, degL, degR, size, tutorialHighlight?]
 const FIRST20 = [
-  [1, 50, 'one', 74, 'one', HINT.GRAB],
-  [2, 48, 'one', 72, 'one', HINT.TRIGGERS],
-  [3, 50, 'two', 74, 'two', HINT.AUDITION],
-  [4, 48, 'maj', 67, 'sus2'],
-  [5, 45, 'min', 69, 'maj'],
-  [6, 41, 'maj', 65, 'min'],
-  [7, 43, 'sus4', 67, 'min'],
-  [8, 48, 'maj7', 72, 'maj'],
-  [9, 45, 'm7', 67, '6'],
-  [10, 50, 'add9', 71, 'sus2'],
-  [11, 43, 'maj7', 62, 'm7'],
-  [12, 48, '6', 64, 'min'],
-  [13, 41, 'min', 60, 'maj7'],
-  [14, 45, 'sus2', 64, 'add9'],
-  [15, 38, 'maj7', 59, 'm7'],
-  [16, 50, 'm7', 71, 'maj'],
-  [17, 46, 'add9', 64, 'maj7'],
-  [18, 43, 'sus4', 62, 'maj'],
-  [19, 48, 'm7', 64, '6'],
-  [20, 41, 'maj7', 57, 'm7'], // gap now 16 semitones — register no longer gives it away
+  [1, 48, 'maj', 0, 4, 1, 'grab'],     // C: I – V
+  [2, 43, 'maj', 4, 0, 1, 'triggers'], // G: V – I
+  [3, 48, 'maj', 0, 4, 2, 'play'],
+  [4, 48, 'maj', 5, 1, 3],             // C: vi – ii
+  [5, 43, 'maj', 3, 4, 3],             // G: vi – V
+  [6, 41, 'maj', 4, 5, 3],             // F: V – vi
+  [7, 48, 'maj', 1, 4, 3],             // C: ii – V
+  [8, 50, 'maj', 3, 0, 3],             // D: vi – I
+  [9, 48, 'maj', 0, 5, 4],             // C: Imaj7 – vim7
+  [10, 43, 'maj', 4, 2, 4],            // G: IVmaj7 – iiim7
+  [11, 41, 'maj', 5, 3, 4],            // F: vim7 – IVmaj7
+  [12, 48, 'maj', 3, 1, 4],            // C: iiim7 – iim7
+  [13, 45, 'min', 0, 3, 4],            // Am: i – iv
+  [14, 45, 'min', 5, 6, 3],            // Am: III – VII (C, G)
+  [15, 40, 'min', 2, 5, 4],            // Em: iv – VII
+  [16, 38, 'min', 0, 4, 4],            // Dm: i – v
+  [17, 45, 'min', 3, 6, 4],            // Am: iv – VII
+  [18, 43, 'maj', 1, 5, 4],            // G: iim7 – vi (jazz feel)
+  [19, 41, 'maj', 4, 3, 4],            // F: V7 – vim7
+  [20, 46, 'maj', 0, 1, 4],            // Bb: I – ii
 ];
 
-// generated ladder past 20: >=16 semitone root separation, quality flip per level,
-// size creeps 4 -> 5
+// generated ladder past 20: random key/scale, degrees >=2 apart, size creeps to 5
 export function makeLevel(n) {
   const row = FIRST20.find(([l]) => l === n);
   if (row) {
-    const [, rL, qL, rR, qR, hint] = row;
-    return { targetL: ch(rL, qL), targetR: ch(rR, qR), hint };
+    const [, keyRoot, scale, degL, degR, size, hint] = row;
+    return {
+      targetL: diatonic(keyRoot, scale, degL, size),
+      targetR: diatonic(keyRoot + 24, scale, degR, size), // R two octaves up; deal() re-mixes
+      hint,
+    };
   }
   const size = Math.min(4 + Math.floor((n - 21) / 3), 5);
-  const rootL = 38 + ((n * 5) % 8);
-  const rootR = rootL + 16 + ((n * 3) % 6);
-  const qA = n % 2 ? 'maj7' : 'm7', qB = n % 2 ? 'm7' : 'maj7';
-  return { targetL: ch(rootL, qA).slice(0, size), targetR: ch(rootR, qB).slice(0, size) };
+  const scale = n % 3 === 0 ? 'min' : 'maj';
+  const rootL = 36 + ((n * 7) % 12);
+  const degL = Math.floor(((n * 13) % 5)); // 0-4 keeps 4-note chords in scale
+  let degR = Math.floor(((n * 17) % 5));
+  if (Math.abs(degR - degL) < 2) degR = (degL + 2) % 5; // distinct regions of the scale
+  return { targetL: diatonic(rootL, scale, degL, size), targetR: diatonic(rootL + 22, scale, degR, size) };
 }
 
 export const deal = ({ targetL, targetR, hint }) => {
-  // disguise the L-low / R-high pattern: random side swap + independent octave shifts
+  // disguise any L-low / R-high pattern: random side swap + independent octave shifts
   let [a, b] = Math.random() < 0.5 ? [targetR, targetL] : [targetL, targetR];
   const shifted = [a, b].map((c) => {
     const out = c.map((m) => m + [-12, 0, 12][Math.floor(Math.random() * 3)]);
