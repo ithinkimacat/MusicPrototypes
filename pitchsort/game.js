@@ -92,22 +92,28 @@ function tickRelease(aHeld) {
     hearCursor(); render();
     if (isPass()) { // auto-win: play feedback, then next level
       S.pass = true; grade();
-      setTimeout(() => loadLevel(S.level + 1), 6500);
+      setTimeout(() => loadLevel(S.level + 1), 4200); // jingle + both chords ≈ 4s
     }
   }
   aHeldPrev = aHeld;
 }
 
-// no score — pass/fail only. Feedback: player chords (wrong notes distorted), then targets.
+// no score — pass/fail only.
+// Pass: happy jingle, then player L/R chords. Fail: chords with wrong notes distorted, then clean targets.
 function grade() {
   S.phase = 'graded';
-  S.pass = isPass();
-  const playCol = (arr, col, baseDelay) => arr.forEach((m, i) =>
-    playNote(m, { pan: PANFOR[col], dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
-  playCol(S.cols.L, 'L', 0);
-  playCol(S.cols.R, 'R', 1.6);
-  playChord(S.targets.L, 'left', { delay: 3.4 });
-  playChord(S.targets.R, 'right', { delay: 5.0 });
+  if (S.pass) {
+    [60, 64, 67, 72].forEach((m, i) => playNote(m, { dur: 0.25, delay: i * 0.13 })); // jingle
+    playChord(S.cols.L, 'left', { delay: 1.0 });
+    playChord(S.cols.R, 'right', { delay: 2.6 });
+  } else {
+    const playCol = (arr, col, baseDelay) => arr.forEach((m, i) =>
+      playNote(m, { pan: PANFOR[col], dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
+    playCol(S.cols.L, 'L', 0);
+    playCol(S.cols.R, 'R', 1.6);
+    playChord(S.targets.L, 'left', { delay: 3.4 });
+    playChord(S.targets.R, 'right', { delay: 5.0 });
+  }
   render();
 }
 
