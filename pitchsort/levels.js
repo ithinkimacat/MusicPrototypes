@@ -51,15 +51,12 @@ export function makeLevel(n) {
 
 export const deal = ({ targetL, targetR, hint }) => {
   // disguise the L-low / R-high pattern: random side swap + independent octave shifts
-  let pair = [targetL, targetR];
-  if (Math.random() < 0.5) pair.reverse();
-  pair = pair.map((c) => {
-    const shift = [-12, 0, 12][Math.floor(Math.random() * 3)];
-    const out = c.map((m) => m + shift);
+  let [a, b] = Math.random() < 0.5 ? [targetR, targetL] : [targetL, targetR];
+  const shifted = [a, b].map((c) => {
+    const out = c.map((m) => m + [-12, 0, 12][Math.floor(Math.random() * 3)]);
     return out.every((m) => m >= 36 && m <= 84) ? out : c; // stay in a pleasant band
   });
-  let [a, b] = pair;
-  if (a.some((m) => b.includes(m))) [a, b] = pair.map((c) => c.map((m) => m)); // overlap after shift → unshifted
+  if (!shifted[0].some((m) => shifted[1].includes(m))) [a, b] = shifted; // accept only if disjoint
   return { targetL: a, targetR: b, hint, center: shuffle([...a, ...b]) };
 };
 
