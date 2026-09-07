@@ -15,6 +15,9 @@ const S = {
   targets: null,
   moves: 0,
   t0: 0,
+  score: 0,
+  streak: 0,
+  best: Number(localStorage.getItem('ps-best') ?? 0),
 };
 
 function loadLevel(n, sameDeal) {
@@ -165,7 +168,8 @@ function confetti() {
 
 function banner() {
   const el = document.getElementById('banner');
-  el.innerHTML = `<span>${PRAISE[Math.floor(Math.random() * PRAISE.length)]}</span>`;
+  el.innerHTML = `<span>${PRAISE[Math.floor(Math.random() * PRAISE.length)]}</span>
+    <small>+${S.pts} pts</small>`;
   el.classList.remove('show');
   void el.offsetWidth; // restart animation
   el.classList.add('show');
@@ -179,6 +183,12 @@ function grade() {
     // stars: perfect efficiency = 3, each extra 25% over optimal costs half a star, floor 1
     const over = (S.moves - S.optimal) / S.optimal;
     S.stars = over <= 0 ? 3 : over <= 0.25 ? 2.5 : over <= 0.5 ? 2 : over <= 0.75 ? 1.5 : 1;
+    // score: level base + efficiency bonus, compounding streak multiplier (cap 2x)
+    S.streak++;
+    const mult = Math.min(2, 1 + S.streak * 0.1);
+    S.pts = Math.round((100 * S.level + 50 * S.stars) * mult);
+    S.score += S.pts;
+    if (S.score > S.best) { S.best = S.score; try { localStorage.setItem('ps-best', S.best); } catch {} }
     banner(); confetti();
     [60, 64, 67, 72].forEach((m, i) => playNote(m, { dur: 0.25, delay: i * 0.13 })); // jingle
     playChord(S.cols.L, 'left', { delay: 0.6 });
@@ -186,6 +196,7 @@ function grade() {
     playChord(S.cols.R, 'right', { delay: 1.9 });
     S.cols.R.forEach((m, i) => flashNote(m, 1.9 + i * 0.03));
   } else {
+    S.streak = 0; // failed submit breaks the multiplier
     const playCol = (arr, col, baseDelay) => arr.forEach((m, i) =>
       playNote(m, { pan: PANFOR[col], dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
     playCol(S.cols.L, 'L', 0);
@@ -211,6 +222,8 @@ function noteHtml(m, k, i) {
 
 function render() {
   const el = document.getElementById('debug');
+  document.getElementById('hud').innerHTML =
+    `SCORE ${S.score} · BEST ${S.best}${S.streak >= 2 ? ` · ${S.streak >= 3 ? '🔥 ' : ''}STREAK ${S.streak} ×${Math.min(2, 1 + S.streak * 0.1).toFixed(1)}` : ''}`;
   // FLIP: snapshot block positions before rebuild, animate deltas after
   const before = {};
   el.querySelectorAll('.note[data-midi]').forEach((n) => { before[n.dataset.midi] = n.getBoundingClientRect(); });
