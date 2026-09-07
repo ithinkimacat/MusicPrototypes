@@ -233,8 +233,6 @@ function render() {
 }
 
 const pad = new Pad(onButton);
-S.phase = 'title';
-renderTitle();
 
 function start() {
   if (S.phase !== 'title') return;
@@ -321,3 +319,7 @@ const repeat = { UP: 0, DOWN: 0, LEFT: 0, RIGHT: 0 };
   }
   requestAnimationFrame(loop);
 })();
+
+// boot last — everything above must be initialized before first render (TDZ)
+S.phase = 'title';
+renderTitle();
