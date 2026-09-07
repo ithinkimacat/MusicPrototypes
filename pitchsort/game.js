@@ -158,7 +158,7 @@ function confetti() {
 
 function banner() {
   const el = document.getElementById('banner');
-  el.textContent = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+  el.innerHTML = `<span>${PRAISE[Math.floor(Math.random() * PRAISE.length)]}</span>`;
   el.classList.remove('show');
   void el.offsetWidth; // restart animation
   el.classList.add('show');
