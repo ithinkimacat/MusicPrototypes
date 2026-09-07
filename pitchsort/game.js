@@ -25,8 +25,9 @@ function loadLevel(n, sameDeal) {
   S.targets = { L: d.targetL, R: d.targetR };
   S.tut = d.hint; // tutorial element to highlight this level ('grab' | 'triggers' | 'play')
   S.everCaptured = false; S.everPlaced = false;
+  S.optimal = d.center.length; // every note starts center: min = 1 capture+place per note
   S.cursor = { col: 'C', row: 0 };
-  S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined;
+  S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined; S.stars = undefined;
   render(); // clears win/fade classes → fades in
   playChord(d.targetL, 'left');
   flashCol('L', 0); // glow synced: target chords play L then R
@@ -175,6 +176,9 @@ function banner() {
 function grade() {
   S.phase = 'graded';
   if (S.pass) {
+    // stars: perfect efficiency = 3, each extra 25% over optimal costs half a star, floor 1
+    const over = (S.moves - S.optimal) / S.optimal;
+    S.stars = over <= 0 ? 3 : over <= 0.25 ? 2.5 : over <= 0.5 ? 2 : over <= 0.75 ? 1.5 : 1;
     banner(); confetti();
     [60, 64, 67, 72].forEach((m, i) => playNote(m, { dur: 0.25, delay: i * 0.13 })); // jingle
     playChord(S.cols.L, 'left', { delay: 0.6 });
@@ -219,9 +223,9 @@ function render() {
   };
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `
-    <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort — Level ${S.level}${S.phase === 'graded' ? (S.pass ? ' ✓' : ' ✗ retry (START)') : ''}</h2>
+    <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort — Level ${S.level}${S.phase === 'graded' ? (S.pass ? ' ✓' : ' ✗ retry (START)') : ''}${S.stars ? ' ' + starHtml(S.stars) : ''}</h2>
     <div class="row">${col('L')}${col('C')}${col('R')}</div>
-    <p class="meta">moves: ${S.moves}</p>
+    <p class="meta">moves: ${S.moves} / min ${S.optimal}</p>
     ${controlsHtml()}`;
 
   el.querySelectorAll('.note[data-midi]').forEach((n) => {
@@ -268,6 +272,9 @@ addEventListener('keyup', (e) => {
 });
 const held = (b) => pad.held(b) || (b === 'A' ? !!keyHeld.space : !!keyHeld[b]);
 addEventListener('pointerdown', start);
+
+const starHtml = (stars) =>
+  [1, 2, 3].map((i) => `<span class="star ${stars >= i ? 'full' : stars >= i - 0.5 ? 'half' : ''}">★</span>`).join('');
 
 // control hint for whatever pad is connected (defaults to Xbox labels until one is)
 const ICON_PAD = `<svg viewBox="0 0 48 30" width="38" fill="none" stroke="#888" stroke-width="1.6">
