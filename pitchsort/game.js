@@ -29,12 +29,10 @@ function loadLevel(n, sameDeal) {
   S.cursor = { col: 'C', row: 0 };
   S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined; S.stars = undefined;
   render(); // clears win/fade classes → fades in
-  // intro: tension chord first, tonic last — resolves like a cadence
-  const home = d.homeSide, away = home === 'L' ? 'R' : 'L';
-  playChord(d['target' + away], away === 'L' ? 'left' : 'right');
-  flashCol(away, 0);
-  playChord(d['target' + home], home === 'L' ? 'left' : 'right', { delay: 1.4 });
-  flashCol(home, 1.4);
+  playChord(d.targetL, 'left');
+  flashCol('L', 0); // always L then R — consistent spatial learning
+  playChord(d.targetR, 'right', { delay: 1.4 });
+  flashCol('R', 1.4);
   setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); render(); }, 2200);
 }
 
@@ -183,11 +181,10 @@ function grade() {
     S.stars = over <= 0 ? 3 : over <= 0.25 ? 2.5 : over <= 0.5 ? 2 : over <= 0.75 ? 1.5 : 1;
     banner(); confetti();
     [60, 64, 67, 72].forEach((m, i) => playNote(m, { dur: 0.25, delay: i * 0.13 })); // jingle
-    const home = S.deal.homeSide, away = home === 'L' ? 'R' : 'L'; // tension then resolve
-    playChord(S.cols[away], away === 'L' ? 'left' : 'right', { delay: 0.6 });
-    S.cols[away].forEach((m, i) => flashNote(m, 0.6 + i * 0.03));
-    playChord(S.cols[home], home === 'L' ? 'left' : 'right', { delay: 1.9 });
-    S.cols[home].forEach((m, i) => flashNote(m, 1.9 + i * 0.03));
+    playChord(S.cols.L, 'left', { delay: 0.6 });
+    S.cols.L.forEach((m, i) => flashNote(m, 0.6 + i * 0.03));
+    playChord(S.cols.R, 'right', { delay: 1.9 });
+    S.cols.R.forEach((m, i) => flashNote(m, 1.9 + i * 0.03));
   } else {
     const playCol = (arr, col, baseDelay) => arr.forEach((m, i) =>
       playNote(m, { pan: PANFOR[col], dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
