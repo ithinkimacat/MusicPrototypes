@@ -27,7 +27,9 @@ function loadLevel(n, sameDeal) {
   S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined;
   render(); // clears win/fade classes → fades in
   playChord(d.targetL, 'left');
+  flashCol('L', 0); // glow synced: target chords play L then R
   playChord(d.targetR, 'right', { delay: 1.4 });
+  flashCol('R', 1.4);
   setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); render(); }, 2200);
 }
 
@@ -130,11 +132,44 @@ function tickRelease(aHeld) {
   aHeldPrev = aHeld;
 }
 
+const PRAISE = ['WELL DONE!', 'GOOD JOB!', "YOU'RE ON FIRE!", 'PITCH PERFECT!', 'NAILED IT!', 'SWEET HARMONY!', 'PERFECT SORT!'];
+
+function confetti() {
+  const HUES = [0, 45, 120, 200, 280, 330];
+  for (let i = 0; i < 70; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti';
+    p.style.background = `hsl(${HUES[i % HUES.length]}, 90%, 60%)`;
+    document.body.appendChild(p);
+    const dx = (Math.random() - 0.5) * 700;
+    const peak = -(200 + Math.random() * 300);
+    const rot = (Math.random() - 0.5) * 1080;
+    const x0 = innerWidth / 2, y0 = innerHeight * 0.4;
+    p.animate(
+      [
+        { transform: `translate(${x0}px, ${y0}px) rotate(0deg)`, opacity: 1 },
+        { transform: `translate(${x0 + dx * 0.6}px, ${y0 + peak}px) rotate(${rot * 0.5}deg)`, opacity: 1, offset: 0.35 },
+        { transform: `translate(${x0 + dx}px, ${y0 + peak + 600}px) rotate(${rot}deg)`, opacity: 0 },
+      ],
+      { duration: 1500 + Math.random() * 700, easing: 'cubic-bezier(.2,.6,.4,1)' },
+    ).onfinish = () => p.remove();
+  }
+}
+
+function banner() {
+  const el = document.getElementById('banner');
+  el.textContent = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+  el.classList.remove('show');
+  void el.offsetWidth; // restart animation
+  el.classList.add('show');
+}
+
 // no score — pass/fail only.
 // Pass: happy jingle, then player L/R chords. Fail: chords with wrong notes distorted, then clean targets.
 function grade() {
   S.phase = 'graded';
   if (S.pass) {
+    banner(); confetti();
     [60, 64, 67, 72].forEach((m, i) => playNote(m, { dur: 0.25, delay: i * 0.13 })); // jingle
     playChord(S.cols.L, 'left', { delay: 0.6 });
     S.cols.L.forEach((m, i) => flashNote(m, 0.6 + i * 0.03));
