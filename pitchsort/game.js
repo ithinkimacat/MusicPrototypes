@@ -24,6 +24,7 @@ function loadLevel(n, sameDeal) {
   S.targets = { L: d.targetL, R: d.targetR };
   S.cursor = { col: 'C', row: 0 };
   S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined;
+  render(); // clears win/fade classes → fades in
   playChord(d.targetL, 'left');
   playChord(d.targetR, 'right', { delay: 1.4 });
   setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); render(); }, 3000);
@@ -92,6 +93,7 @@ function tickRelease(aHeld) {
     hearCursor(); render();
     if (isPass()) { // auto-win: play feedback, then next level
       S.pass = true; grade();
+      setTimeout(() => document.getElementById('debug').classList.add('fade'), 3800);
       setTimeout(() => loadLevel(S.level + 1), 4200); // jingle + both chords ≈ 4s
     }
   }
@@ -117,21 +119,45 @@ function grade() {
   render();
 }
 
+// pitch → hue: blue (low) through green/yellow to red (high)
+const midiColor = (m) => `hsl(${240 - ((m - 45) / 31) * 240}, 90%, 55%)`;
+
+function noteHtml(m, k, i) {
+  const cls = [
+    'note',
+    S.cursor.col === k && S.cursor.row === i && !S.captured ? 'cursor' : '',
+    S.captured?.midi === m ? 'captured' : '',
+  ].join(' ');
+  return `<span class="${cls}" data-midi="${m}" style="background:${midiColor(m)}">${m}</span>`;
+}
+
 function render() {
   const el = document.getElementById('debug');
+  // FLIP: snapshot block positions before rebuild, animate deltas after
+  const before = {};
+  el.querySelectorAll('.note[data-midi]').forEach((n) => { before[n.dataset.midi] = n.getBoundingClientRect(); });
+
   const col = (k) => {
-    const rows = S.cols[k].map((m, i) => {
-      const cur = S.cursor.col === k && S.cursor.row === i ? '>' : ' ';
-      const held = S.captured?.midi === m ? '*' : '';
-      return `${cur}${m}${held}`;
-    });
-    if (S.captured && S.cursor.col === k) rows.splice(S.cursor.row, 0, `[${S.captured.midi}]`);
-    return `<div class="col"><h3>${k === 'L' ? 'LEFT' : k === 'R' ? 'RIGHT' : 'CENTER'}</h3>${rows.join('<br>') || '&nbsp;'}</div>`;
+    let rows = S.cols[k].map((m, i) => noteHtml(m, k, i));
+    if (S.captured && S.cursor.col === k) rows.splice(S.cursor.row, 0, noteHtml(S.captured.midi, k, S.cursor.row));
+    return `<div class="col ${S.cursor.col === k ? 'active' : ''}"><h3>${{ L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[k]}</h3>${rows.join('')}</div>`;
   };
+  el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `
-    <h2>PitchSort — Level ${S.level} ${S.phase === 'graded' ? (S.pass ? 'PASS ✓ → START for next' : 'FAIL ✗ → START to retry') : ''}</h2>
+    <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort — Level ${S.level}${S.phase === 'graded' ? (S.pass ? ' ✓' : ' ✗ retry (START)') : ''}</h2>
     <div class="row">${col('L')}${col('C')}${col('R')}</div>
-    <p>moves: ${S.moves} &nbsp; targets: L[${S.targets.L}] R[${S.targets.R}]</p>`;
+    <p style="color:#555">moves: ${S.moves}</p>`;
+
+  el.querySelectorAll('.note[data-midi]').forEach((n) => {
+    const b = before[n.dataset.midi];
+    if (!b) { // new arrival: grow in
+      n.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'ease-out' });
+      return;
+    }
+    const a = n.getBoundingClientRect();
+    const dx = b.left - a.left, dy = b.top - a.top;
+    if (dx || dy) n.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(.34,1.4,.64,1)' });
+  });
 }
 
 const pad = new Pad(onButton);
