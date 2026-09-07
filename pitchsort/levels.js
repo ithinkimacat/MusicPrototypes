@@ -17,30 +17,32 @@ function diatonic(root, scaleName, degree, size) {
 
 // tutorial = which input to highlight (pulsing chip), not text
 // [level, keyRootLow, scale, degL, degR, size, tutorialHighlight?]
+// every pair contains the tonic (degree 0) on ONE side -> tension|home pair,
+// and win plays tension first, home last: a cadence either way the columns land.
 const FIRST20 = [
-  [1, 48, 'maj', 0, 4, 1, 'grab'],     // C: I – V
-  [2, 43, 'maj', 4, 0, 1, 'triggers'], // G: V – I
+  [1, 48, 'maj', 0, 4, 1, 'grab'],     // C: I | V
+  [2, 43, 'maj', 0, 3, 1, 'triggers'], // G: I | IV
   [3, 48, 'maj', 0, 4, 2, 'play'],
-  [4, 48, 'maj', 5, 1, 3],             // C: vi – ii
-  [5, 43, 'maj', 3, 4, 3],             // G: vi – V
-  [6, 41, 'maj', 4, 5, 3],             // F: V – vi
-  [7, 48, 'maj', 1, 4, 3],             // C: ii – V
-  [8, 50, 'maj', 3, 0, 3],             // D: vi – I
-  [9, 48, 'maj', 0, 5, 4],             // C: Imaj7 – vim7
-  [10, 43, 'maj', 4, 2, 4],            // G: IVmaj7 – iiim7
-  [11, 41, 'maj', 5, 3, 4],            // F: vim7 – IVmaj7
-  [12, 48, 'maj', 3, 1, 4],            // C: iiim7 – iim7
-  [13, 45, 'min', 0, 3, 4],            // Am: i – iv
-  [14, 45, 'min', 5, 6, 3],            // Am: III – VII (C, G)
-  [15, 40, 'min', 2, 5, 4],            // Em: iv – VII
-  [16, 38, 'min', 0, 4, 4],            // Dm: i – v
-  [17, 45, 'min', 3, 6, 4],            // Am: iv – VII
-  [18, 43, 'maj', 1, 5, 4],            // G: iim7 – vi (jazz feel)
-  [19, 41, 'maj', 4, 3, 4],            // F: V7 – vim7
-  [20, 46, 'maj', 0, 1, 4],            // Bb: I – ii
+  [4, 48, 'maj', 3, 0, 3],             // C: IV | I
+  [5, 43, 'maj', 0, 5, 3],             // G: I | vi
+  [6, 41, 'maj', 0, 1, 3],             // F: I | ii
+  [7, 48, 'maj', 1, 0, 3],             // C: ii | I
+  [8, 50, 'maj', 3, 0, 3],             // D: IV | I
+  [9, 48, 'maj', 0, 4, 4],             // C: Imaj7 | V7
+  [10, 43, 'maj', 3, 0, 4],            // G: IVmaj7 | Imaj7
+  [11, 41, 'maj', 5, 0, 4],            // F: vim7 | Imaj7
+  [12, 48, 'maj', 0, 5, 4],            // C: Imaj7 | vim7
+  [13, 45, 'min', 0, 6, 4],            // Am: im7 | VIIm7
+  [14, 45, 'min', 3, 0, 4],            // Am: ivm7 | im7
+  [15, 40, 'min', 0, 5, 4],            // Em: i7 | VImaj7
+  [16, 38, 'min', 0, 4, 4],            // Dm: im7 | vm7
+  [17, 45, 'min', 5, 0, 4],            // Am: IIImaj7 | im7
+  [18, 43, 'maj', 4, 0, 4],            // G: V7 | Imaj7
+  [19, 41, 'maj', 3, 0, 4],            // F: IVmaj7 | Imaj7
+  [20, 46, 'maj', 1, 0, 4],            // Bb: iim7 | Imaj7
 ];
 
-// generated ladder past 20: random key/scale, degrees >=2 apart, size creeps to 5
+// generated ladder past 20: one side is always tonic, other 1-6, size creeps to 5
 export function makeLevel(n) {
   const row = FIRST20.find(([l]) => l === n);
   if (row) {
@@ -48,27 +50,35 @@ export function makeLevel(n) {
     return {
       targetL: diatonic(keyRoot, scale, degL, size),
       targetR: diatonic(keyRoot + 24, scale, degR, size), // R two octaves up; deal() re-mixes
+      homeSide: degL === 0 ? 'L' : 'R',
       hint,
     };
   }
   const size = Math.min(4 + Math.floor((n - 21) / 3), 5);
   const scale = n % 3 === 0 ? 'min' : 'maj';
   const rootL = 36 + ((n * 7) % 12);
-  const degL = Math.floor(((n * 13) % 5)); // 0-4 keeps 4-note chords in scale
-  let degR = Math.floor(((n * 17) % 5));
-  if (Math.abs(degR - degL) < 2) degR = (degL + 2) % 5; // distinct regions of the scale
-  return { targetL: diatonic(rootL, scale, degL, size), targetR: diatonic(rootL + 22, scale, degR, size) };
+  const homeLeft = n % 2 === 0;
+  const degTension = 1 + ((n * 13) % 5); // 1-5, never 0
+  return {
+    targetL: diatonic(rootL, scale, homeLeft ? 0 : degTension, size),
+    targetR: diatonic(rootL + 22, scale, homeLeft ? degTension : 0, size),
+    homeSide: homeLeft ? 'L' : 'R',
+  };
 }
 
-export const deal = ({ targetL, targetR, hint }) => {
+export const deal = ({ targetL, targetR, hint, homeSide }) => {
   // disguise any L-low / R-high pattern: random side swap + independent octave shifts
-  let [a, b] = Math.random() < 0.5 ? [targetR, targetL] : [targetL, targetR];
+  // (homeSide travels with the swap so win playback still resolves onto the tonic)
+  const swapped = Math.random() < 0.5;
+  let [a, b] = swapped ? [targetR, targetL] : [targetL, targetR];
+  let home = homeSide;
+  if (swapped) home = homeSide === 'L' ? 'R' : 'L';
   const shifted = [a, b].map((c) => {
     const out = c.map((m) => m + [-12, 0, 12][Math.floor(Math.random() * 3)]);
     return out.every((m) => m >= 36 && m <= 84) ? out : c; // stay in a pleasant band
   });
   if (!shifted[0].some((m) => shifted[1].includes(m))) [a, b] = shifted; // accept only if disjoint
-  return { targetL: a, targetR: b, hint, center: shuffle([...a, ...b]) };
+  return { targetL: a, targetR: b, homeSide: home, hint, center: shuffle([...a, ...b]) };
 };
 
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
