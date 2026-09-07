@@ -42,10 +42,13 @@
   .ctl { display:flex; align-items:center; gap:.45em; color:#777; font-size:.8em }
   .kchip { border:1px solid #444; border-bottom-width:2px; border-radius:6px; padding:.1em .5em;
            background:#ffffff10; color:#ccc; font-weight:600 }
-  .tut { color:#b8d4ff; font-size:1.1em; font-weight:500; max-width:34em; margin:0 auto 1.2em;
-         line-height:1.6; white-space:pre-line; padding:.7em 1.2em; border-radius:12px;
-         background:#9fc4ff14; border:1px solid #9fc4ff30; animation:tutin .5s ease-out }
-  @keyframes tutin { from { opacity:0; transform:translateY(6px) } }
+  /* diegetic tutorial cues: things breathe/invite instead of text explaining */
+  .note.attract { animation:attract 1.2s ease-in-out infinite }
+  @keyframes attract { 50% { transform:scale(1.14); filter:brightness(1.45) } }
+  .col.invite { animation:invite 1.1s ease-in-out infinite }
+  @keyframes invite { 50% { border-color:#9fd0aa; box-shadow:0 0 14px #9fd0aa33 } }
+  .kchip.pulse { animation:chippulse 1s ease-in-out infinite; border-color:#9fd0aa; color:#cfffd9 }
+  @keyframes chippulse { 50% { transform:translateY(-2px); box-shadow:0 3px 10px #9fd0aa44 } }
 
   #banner { position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:20 }
   #banner span { font-size:3.4em; font-weight:800; letter-spacing:.08em; color:#9fffb0; opacity:0;

@@ -23,7 +23,8 @@ function loadLevel(n, sameDeal) {
   S.deal = d;
   S.cols = { L: [], C: [...d.center], R: [] };
   S.targets = { L: d.targetL, R: d.targetR };
-  S.hint = d.hint;
+  S.tut = d.hint; // tutorial element to highlight this level ('grab' | 'triggers' | 'play')
+  S.everCaptured = false; S.everPlaced = false;
   S.cursor = { col: 'C', row: 0 };
   S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined;
   render(); // clears win/fade classes → fades in
@@ -98,6 +99,7 @@ function onButton(b) {
       S.moves++;
       S.capVoice = startCaptureVoice(midi, PANFOR[S.cursor.col]);
       S.lastPan = PANFOR[S.cursor.col];
+      S.everCaptured = true;
       render();
       break;
     }
@@ -125,6 +127,7 @@ function tickRelease(aHeld) {
     S.capVoice.stop(); S.capVoice = null;
     colArr().splice(S.cursor.row, 0, S.captured.midi);
     S.captured = null;
+    S.everPlaced = true;
     hearCursor(); render();
     if (isPass()) { // auto-win: play feedback, then next level
       S.pass = true; grade();
@@ -197,6 +200,7 @@ function noteHtml(m, k, i) {
     'note',
     S.cursor.col === k && S.cursor.row === i && !S.captured ? 'cursor' : '',
     S.captured?.midi === m ? 'captured' : '',
+    S.tut === 'grab' && !S.everCaptured && k === 'C' ? 'attract' : '', // L1: note breathes until grabbed
   ].join(' ');
   return `<span class="${cls}" data-midi="${m}" style="background:${midiColor(m)}"></span>`;
 }
@@ -210,12 +214,12 @@ function render() {
   const col = (k) => {
     let rows = S.cols[k].map((m, i) => noteHtml(m, k, i));
     if (S.captured && S.cursor.col === k) rows.splice(S.cursor.row, 0, noteHtml(S.captured.midi, k, S.cursor.row));
-    return `<div class="col ${S.cursor.col === k ? 'active' : ''}" data-col="${k}"><h3>${{ L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[k]}</h3>${rows.join('')}</div>`;
+    const invite = S.tut === 'grab' && S.everCaptured && !S.everPlaced && k !== 'C' ? 'invite' : '';
+    return `<div class="col ${S.cursor.col === k ? 'active' : ''} ${invite}" data-col="${k}"><h3>${{ L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[k]}</h3>${rows.join('')}</div>`;
   };
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `
     <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort — Level ${S.level}${S.phase === 'graded' ? (S.pass ? ' ✓' : ' ✗ retry (START)') : ''}</h2>
-    ${S.hint && S.phase === 'play' ? `<p class="tut">${S.hint}</p>` : ''}
     <div class="row">${col('L')}${col('C')}${col('R')}</div>
     <p class="meta">moves: ${S.moves}</p>
     ${controlsHtml()}`;
@@ -276,22 +280,22 @@ const ICON_KEY = `<svg viewBox="0 0 48 30" width="38" fill="none" stroke="#888" 
 
 function controlsHtml() {
   const n = (pad.info ?? detectFamily()).names;
-  const k = (label, action) => `<span class="ctl"><b class="kchip">${label}</b>${action}</span>`;
+  const k = (label, action, tutKey) => `<span class="ctl"><b class="kchip ${S.tut === tutKey && S.phase === 'play' ? 'pulse' : ''}">${label}</b>${action}</span>`;
   const bumpers = pad.info?.family === 'ps' ? 'L1/R1' : 'LB/RB';
   return `<div class="ctl-groups">
     <div class="ctl-group ${pad.info ? '' : 'dim'}">
       <div class="ctl-head">${ICON_PAD} <span>gamepad${pad.info ? ' · ' + pad.info.family.toUpperCase() : ''}</span></div>
       <div class="controls">
-        ${k('◀▲▼▶', 'move')} ${k(n.bottom, 'hold = grab, release = drop')} ${k(n.left, 'play Left')} ${k(n.right, 'play Right')}
-        ${k(n.top, 'play Center')} ${k(n.lt, 'target L')} ${k(n.rt, 'target R')} ${k(bumpers, 'volume')}
+        ${k('◀▲▼▶', 'move')} ${k(n.bottom, 'hold = grab, release = drop', 'grab')} ${k(n.left, 'play Left', 'play')} ${k(n.right, 'play Right', 'play')}
+        ${k(n.top, 'play Center', 'play')} ${k(n.lt, 'target L', 'triggers')} ${k(n.rt, 'target R', 'triggers')} ${k(bumpers, 'volume')}
       </div>
     </div>
     <div class="ctl-group ${keyUsed || !pad.info ? '' : 'dim'}">
       <div class="ctl-head">${ICON_KEY} <span>keyboard</span></div>
       <div class="controls">
-        ${k('WASD / ←↑↓→', 'move')} ${k('Space', 'hold = grab, release = drop')} ${k('Esc', 'cancel grab')}
-        ${k('J', 'play Left')} ${k('K', 'play Center')} ${k('L', 'play Right')}
-        ${k('Q', 'target L')} ${k('E', 'target R')} ${k('- =', 'volume')}
+        ${k('WASD / ←↑↓→', 'move')} ${k('Space', 'hold = grab, release = drop', 'grab')} ${k('Esc', 'cancel grab')}
+        ${k('J', 'play Left', 'play')} ${k('K', 'play Center', 'play')} ${k('L', 'play Right', 'play')}
+        ${k('Q', 'target L', 'triggers')} ${k('E', 'target R', 'triggers')} ${k('- =', 'volume')}
       </div>
     </div>
   </div>`;

@@ -7,13 +7,10 @@ const Q = {
 };
 const ch = (root, q) => Q[q].map((i) => root + i);
 
-const HINT = {
-  GRAB: 'Hold grab (bottom face button / Space) to pick up a note — move it, release to drop.\nListen: the LEFT chord pans left, the RIGHT chord pans right.',
-  TRIGGERS: 'Use LT/RT (triggers / Q E) to replay the target chords any time.',
-  AUDITION: 'X / B (face buttons / J L) plays your Left and Right columns. Y / K plays Center.\nBuild the targets, Center empty = win!',
-};
+// tutorial = which input to highlight (pulsing chip), not text
+const HINT = { GRAB: 'grab', TRIGGERS: 'triggers', AUDITION: 'play' };
 
-// [level, rootL, qL, rootR, qR, hint?]
+// [level, rootL, qL, rootR, qR, tutorial-highlight?]
 const FIRST20 = [
   [1, 50, 'one', 74, 'one', HINT.GRAB],
   [2, 48, 'one', 72, 'one', HINT.TRIGGERS],
