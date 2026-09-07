@@ -70,7 +70,7 @@ function isPass() {
 }
 
 function onButton(b) {
-  ctx.resume();
+  if (S.phase === 'title') { start(); return; }
   if (S.phase === 'graded') {
     if (b === 'START') loadLevel(S.pass ? S.level + 1 : S.level, !S.pass);
     return;
@@ -228,7 +228,24 @@ function render() {
 }
 
 const pad = new Pad(onButton);
-loadLevel(1);
+S.phase = 'title';
+renderTitle();
+
+function start() {
+  if (S.phase !== 'title') return;
+  ctx.resume(); // AudioContext stays suspended until a user gesture — gate on any input
+  loadLevel(1);
+}
+addEventListener('keydown', start);
+addEventListener('pointerdown', start);
+
+function renderTitle() {
+  document.getElementById('debug').innerHTML = `
+    <h2>PITCHSORT</h2>
+    <p class="meta">Hear the chords. Sort the notes. Left vs Right.</p>
+    <p style="margin-top:2em;animation:glow 1.6s ease-in-out infinite">PRESS ANY BUTTON TO START</p>
+    <p class="meta">Supports Xbox-layout gamepads (D-pad move · A grab · X/B/Y play columns · LT/RT targets)</p>`;
+}
 // held-button auto-repeat: 300ms initial delay, then 90ms steps — fixes sluggish D-pad
 const repeat = { UP: 0, DOWN: 0, LEFT: 0, RIGHT: 0 };
 (function loop(t = 0) {
