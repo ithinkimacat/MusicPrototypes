@@ -90,6 +90,10 @@ function tickRelease(aHeld) {
     colArr().splice(S.cursor.row, 0, S.captured.midi);
     S.captured = null;
     hearCursor(); render();
+    if (isPass()) { // auto-win: play feedback, then next level
+      S.pass = true; grade();
+      setTimeout(() => loadLevel(S.level + 1), 6500);
+    }
   }
   aHeldPrev = aHeld;
 }
