@@ -1,5 +1,5 @@
 // game.js — state machine + render (debug screen only, mirrors stereo axis).
-import { ctx, playNote, playChord } from './audio.js';
+import { ctx, playNote, playChord, startCaptureVoice } from './audio.js';
 import { Pad } from './input.js';
 import { makeLevel, deal } from './levels.js';
 
@@ -52,8 +52,9 @@ function colArr(k = S.cursor.col) { return S.cols[k]; }
 const clampRow = () => { S.cursor.row = Math.max(0, Math.min(S.cursor.row, colArr().length - (S.captured ? 0 : 1))); };
 
 function hearCursor() {
-  const n = S.captured?.midi ?? colArr()[S.cursor.row];
-  if (n !== undefined) playNote(n, { pan: PANFOR[S.cursor.col], captured: S.captured?.midi === n });
+  if (S.capVoice) { S.capVoice.setPan(PANFOR[S.cursor.col]); return; } // pulse loop already sounding
+  const n = colArr()[S.cursor.row];
+  if (n !== undefined) playNote(n, { pan: PANFOR[S.cursor.col] });
 }
 
 function isPass() {
@@ -85,11 +86,13 @@ function onButton(b) {
       const midi = arr.splice(S.cursor.row, 1)[0];
       S.captured = { midi, srcCol: S.cursor.col, srcRow: S.cursor.row };
       S.moves++;
-      hearCursor(); render();
+      S.capVoice = startCaptureVoice(midi, PANFOR[S.cursor.col]);
+      render();
       break;
     }
     case 'B':
       if (S.captured) {
+        S.capVoice.stop(); S.capVoice = null;
         S.cols[S.captured.srcCol].splice(S.captured.srcRow, 0, S.captured.midi);
         S.captured = null; S.moves--; hearCursor(); render();
       } else auditionCol('R', 'right');
@@ -106,6 +109,7 @@ function onButton(b) {
 let aHeldPrev = false;
 function tickRelease(aHeld) {
   if (aHeldPrev && !aHeld && S.captured) {
+    S.capVoice.stop(); S.capVoice = null;
     colArr().splice(S.cursor.row, 0, S.captured.midi);
     S.captured = null;
     hearCursor(); render();

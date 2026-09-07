@@ -4,11 +4,10 @@ export const ctx = new AudioContext();
 const PAN = { left: -0.8, center: 0, right: 0.8 };
 export const midiToFreq = (m) => 440 * 2 ** ((m - 69) / 12);
 
-// captured-note voice: lowpass + 4Hz gain pulse
-export function playNote(midi, { pan = 0, dur = 0.5, captured = false, wrong = false, sustain = false, delay = 0 } = {}) {
+export function playNote(midi, { pan = 0, dur = 0.5, wrong = false, sustain = false, delay = 0 } = {}) {
   const t = ctx.currentTime + delay;
   const osc = ctx.createOscillator();
-  osc.type = captured || wrong ? 'sawtooth' : 'sine';
+  osc.type = wrong ? 'sawtooth' : 'sine';
   osc.frequency.value = midiToFreq(midi);
   if (wrong) osc.detune.value = 40;
 
@@ -19,15 +18,6 @@ export function playNote(midi, { pan = 0, dur = 0.5, captured = false, wrong = f
   amp.gain.exponentialRampToValueAtTime(0.001, t + endDur);
 
   let head = osc;
-  if (captured) {
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 800;
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 4;
-    const lfoGain = ctx.createGain(); lfoGain.gain.value = 0.15;
-    lfo.connect(lfoGain).connect(amp.gain);
-    lfo.start(t); lfo.stop(t + endDur);
-    osc.connect(lp); head = lp;
-  }
   if (wrong) {
     const ws = ctx.createWaveShaper();
     ws.curve = distortionCurve(30);
@@ -41,7 +31,40 @@ export function playNote(midi, { pan = 0, dur = 0.5, captured = false, wrong = f
 }
 
 export function playChord(midis, column, opts = {}) {
-  midis.forEach((m, i) => playNote(m, { ...opts, pan: PAN[column], dur: 1.2, delay: i * 0.03 }));
+  const base = opts.delay ?? 0;
+  midis.forEach((m, i) => playNote(m, { ...opts, pan: PAN[column], dur: 1.2, delay: base + i * 0.03 }));
+}
+
+// captured-note voice: SAME sine timbre as a normal note, pulsing every 0.7s —
+// envelope gates shut 0.15s before each next beat, echo tail inside the beat.
+export function startCaptureVoice(midi, pan = 0) {
+  const panner = ctx.createStereoPanner(); panner.pan.value = pan;
+  const echo = ctx.createDelay(); echo.delayTime.value = 0.15;
+  const fb = ctx.createGain(); fb.gain.value = 0.22;
+  const wet = ctx.createGain(); wet.gain.value = 0.5;
+  echo.connect(fb).connect(echo);
+  echo.connect(wet).connect(ctx.destination);
+  panner.connect(ctx.destination);
+  panner.connect(echo);
+
+  function beat() {
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator(); // plain sine — matches normal note timbre
+    o.frequency.value = midiToFreq(midi);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.3, t + 0.01);
+    g.gain.setValueAtTime(0.3, t + 0.45);
+    g.gain.linearRampToValueAtTime(0, t + 0.55); // tight gate before next beat
+    o.connect(g).connect(panner);
+    o.start(t); o.stop(t + 0.7);
+  }
+  beat();
+  const iv = setInterval(beat, 700);
+  return {
+    setPan(v) { panner.pan.value = v; },
+    stop() { clearInterval(iv); setTimeout(() => { panner.disconnect(); echo.disconnect(); fb.disconnect(); wet.disconnect(); }, 1200); },
+  };
 }
 
 function distortionCurve(k) {
