@@ -1,5 +1,5 @@
 // game.js — state machine + render (debug screen only, mirrors stereo axis).
-import { ctx, playNote, playChord, startCaptureVoice } from './audio.js';
+import { ctx, playNote, playChord, startCaptureVoice, playSwoosh } from './audio.js';
 import { Pad } from './input.js';
 import { makeLevel, deal } from './levels.js';
 
@@ -18,6 +18,7 @@ const S = {
 };
 
 function loadLevel(n, sameDeal) {
+  S.level = n; // was never updated — level counter stuck at 1
   const d = sameDeal ? S.deal : deal(makeLevel(n));
   S.deal = d;
   S.cols = { L: [], C: [...d.center], R: [] };
@@ -73,7 +74,9 @@ function onButton(b) {
   switch (b) {
     case 'LEFT': case 'RIGHT': {
       const i = ORDER.indexOf(S.cursor.col) + (b === 'RIGHT' ? 1 : -1);
-      if (i >= 0 && i < 3) { S.cursor.col = ORDER[i]; clampRow(); hearCursor(); render(); }
+      if (i >= 0 && i < 3) {
+        S.cursor.col = ORDER[i]; clampRow(); playSwoosh(b === 'RIGHT' ? 1 : -1); hearCursor(); render();
+      }
       break;
     }
     case 'UP': case 'DOWN':
@@ -186,4 +189,15 @@ function render() {
 
 const pad = new Pad(onButton);
 loadLevel(1);
-(function loop() { pad.poll(); tickRelease(pad.held('A')); requestAnimationFrame(loop); })();
+// held-button auto-repeat: 300ms initial delay, then 90ms steps — fixes sluggish D-pad
+const repeat = { UP: 0, DOWN: 0, LEFT: 0, RIGHT: 0 };
+(function loop(t = 0) {
+  pad.poll();
+  tickRelease(pad.held('A'));
+  for (const b of Object.keys(repeat)) {
+    if (!pad.held(b)) { repeat[b] = 0; continue; }
+    if (!repeat[b]) { repeat[b] = t + 300; continue; } // edge already fired
+    if (t >= repeat[b]) { onButton(b); repeat[b] = t + 90; }
+  }
+  requestAnimationFrame(loop);
+})();
