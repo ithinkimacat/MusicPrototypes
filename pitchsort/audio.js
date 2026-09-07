@@ -8,6 +8,17 @@ comp.attack.value = 0.003; comp.release.value = 0.25;
 export const master = ctx.createGain();
 master.connect(comp).connect(ctx.destination);
 
+// volume 0..1, persisted
+let vol = Number(localStorage.getItem('ps-vol') ?? 0.9);
+master.gain.value = vol;
+export function setVolume(v) {
+  vol = Math.round(Math.max(0, Math.min(1, v)) * 20) / 20; // 5% steps
+  master.gain.setTargetAtTime(vol, ctx.currentTime, 0.03);
+  localStorage.setItem('ps-vol', vol);
+  return vol;
+}
+export const getVolume = () => vol;
+
 const PAN = { left: -0.8, center: 0, right: 0.8 };
 export const midiToFreq = (m) => 440 * 2 ** ((m - 69) / 12);
 

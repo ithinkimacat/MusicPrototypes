@@ -1,5 +1,5 @@
 // game.js — state machine + render (debug screen only, mirrors stereo axis).
-import { ctx, playNote, playChord, startCaptureVoice } from './audio.js';
+import { ctx, playNote, playChord, startCaptureVoice, setVolume, getVolume } from './audio.js';
 import { Pad, detectFamily } from './input.js';
 import { makeLevel, deal } from './levels.js';
 
@@ -23,6 +23,7 @@ function loadLevel(n, sameDeal) {
   S.deal = d;
   S.cols = { L: [], C: [...d.center], R: [] };
   S.targets = { L: d.targetL, R: d.targetR };
+  S.hint = d.hint;
   S.cursor = { col: 'C', row: 0 };
   S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined;
   render(); // clears win/fade classes → fades in
@@ -111,6 +112,8 @@ function onButton(b) {
     case 'Y': auditionCol('C', 'center'); break;
     case 'LT': previewTarget('L', 'left'); break;
     case 'RT': previewTarget('R', 'right'); break;
+    case 'LB': setVolume(getVolume() - 0.1); render(); break;
+    case 'RB': setVolume(getVolume() + 0.1); render(); break;
     case 'START': if (S.cols.C.length === 0 && !S.captured) grade(); break;
   }
 }
@@ -214,6 +217,7 @@ function render() {
     <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort — Level ${S.level}${S.phase === 'graded' ? (S.pass ? ' ✓' : ' ✗ retry (START)') : ''}</h2>
     <div class="row">${col('L')}${col('C')}${col('R')}</div>
     <p class="meta">moves: ${S.moves}</p>
+    ${S.hint && S.phase === 'play' ? `<p class="tut">${S.hint}</p>` : ''}
     ${controlsHtml()}`;
 
   el.querySelectorAll('.note[data-midi]').forEach((n) => {
@@ -238,14 +242,27 @@ function start() {
   loadLevel(1);
 }
 addEventListener('keydown', start);
+addEventListener('keydown', (e) => {
+  if (S.phase !== 'play') return;
+  if (e.key === '-') { setVolume(getVolume() - 0.1); render(); }
+  if (e.key === '=') { setVolume(getVolume() + 0.1); render(); }
+});
 addEventListener('pointerdown', start);
 
 // control hint for whatever pad is connected (defaults to Xbox labels until one is)
 function controlsHtml() {
   const n = (pad.info ?? detectFamily()).names;
-  return `<p class="meta" style="max-width:34em;margin:1.5em auto 0">
-    D-pad move · hold ${n.bottom} grab, release to place · ${n.left}/${n.right} play Left/Right · ${n.top} play Center ·
-    ${n.lt}/${n.rt} preview targets${pad.info ? '' : ' · (connect gamepad)'}</p>`;
+  const k = (label, action) => `<span class="ctl"><b class="kchip">${label}</b>${action}</span>`;
+  return `<div class="controls">
+    ${k('◀▲▼▶', 'move')}
+    ${k(n.bottom, 'hold = grab · release = drop')}
+    ${k(n.left, 'play Left')}
+    ${k(n.right, 'play Right')}
+    ${k(n.top, 'play Center')}
+    ${k(n.lt, 'target L')}
+    ${k(n.rt, 'target R')}
+    ${k((pad.info?.family === 'ps' ? 'L1/R1' : 'LB/RB'), 'volume ' + Math.round(getVolume() * 100) + '%')}
+  </div>`;
 }
 
 function renderTitle() {
