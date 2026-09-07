@@ -74,7 +74,7 @@ export function startCaptureVoice(midi, pan = 0) {
 
   let dead = false;
   return {
-    setPan(v) { panner.pan.linearRampToValueAtTime(v, ctx.currentTime + 0.12); },
+    setPan(v) { panner.pan.setTargetAtTime(v, ctx.currentTime, 0.08); }, // exponential glide, no ramp conflicts
     stop() {
       if (dead) return; dead = true;
       clearInterval(iv);

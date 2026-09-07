@@ -53,7 +53,11 @@ function colArr(k = S.cursor.col) { return S.cols[k]; }
 const clampRow = () => { S.cursor.row = Math.max(0, Math.min(S.cursor.row, colArr().length - (S.captured ? 0 : 1))); };
 
 function hearCursor() {
-  if (S.capVoice) { S.capVoice.setPan(PANFOR[S.cursor.col]); return; } // pulse loop already sounding
+  if (S.capVoice) {
+    const p = PANFOR[S.cursor.col];
+    if (p !== S.lastPan) { S.lastPan = p; S.capVoice.setPan(p); } // skip same-column moves
+    return;
+  }
   const n = colArr()[S.cursor.row];
   if (n !== undefined) playNote(n, { pan: PANFOR[S.cursor.col] });
 }
@@ -90,6 +94,7 @@ function onButton(b) {
       S.captured = { midi, srcCol: S.cursor.col, srcRow: S.cursor.row };
       S.moves++;
       S.capVoice = startCaptureVoice(midi, PANFOR[S.cursor.col]);
+      S.lastPan = PANFOR[S.cursor.col];
       render();
       break;
     }
