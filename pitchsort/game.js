@@ -18,16 +18,18 @@ const S = {
   partial: true, // subtle sustain feedback, off at high difficulty
 };
 
-function loadLevel(n) {
-  const lv = makeLevel(n);
-  S.cols = { L: [], C: lv.center, R: [] };
+function loadLevel(n, initialCenter) {
+  const lv = initialCenter ? S.deal : makeLevel(n);
+  S.deal = lv;
+  S.cols = { L: [], C: initialCenter ? [...initialCenter] : lv.center, R: [] };
   S.targets = { L: lv.targetL, R: lv.targetR };
   S.cursor = { col: 'C', row: 0 };
-  S.captured = null; S.moves = 0; S.phase = 'intro'; S.partial = n <= 6;
+  S.captured = null; S.moves = 0; S.phase = 'intro'; S.partial = n <= 6; S.score = undefined;
   playChord(lv.targetL, 'left');
   playChord(lv.targetR, 'right', { delay: 1.4 });
   setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); render(); }, 3000);
 }
+const retry = () => loadLevel(S.level, S.deal.center); // same deal, no re-shuffle
 
 function colArr(k = S.cursor.col) { return S.cols[k]; }
 const clampRow = () => { S.cursor.row = Math.max(0, Math.min(S.cursor.row, colArr().length - (S.captured ? 0 : 1))); };
@@ -39,7 +41,7 @@ function hearCursor() {
 
 function onButton(b) {
   ctx.resume();
-  if (S.phase === 'graded') { if (b === 'START') loadLevel(S.level + 1); return; }
+  if (S.phase === 'graded') { if (b === 'START') (S.pass ? loadLevel(S.level + 1) : retry()); return; }
   if (S.phase !== 'play') return;
 
   switch (b) {
@@ -93,12 +95,12 @@ function grade() {
   const inChord = (arr, target) => arr.filter((m) => target.includes(m));
   const accL = inChord(S.cols.L, S.targets.L).length / S.targets.L.length;
   const accR = inChord(S.cols.R, S.targets.R).length / S.targets.R.length;
-  const posAcc = [...S.targets.L, ...S.targets.R].filter((m) => S.cols.L.indexOf(m) === S.targets.L.indexOf(m) || S.cols.R.indexOf(m) === S.targets.R.indexOf(m)).length / (S.targets.L.length + S.targets.R.length);
-  const optimal = S.targets.L.length + S.targets.R.length;
+  S.pass = accL === 1 && accR === 1 && S.cols.L.length === S.targets.L.length && S.cols.R.length === S.targets.R.length;
+  const optimal = S.targets.L.length + S.targets.R.length; // 1 capture per note
   const eff = Math.max(0, 1 - Math.max(0, S.moves - optimal) / optimal);
   const secs = (performance.now() - S.t0) / 1000;
   const time = Math.max(0, 1 - secs / 120);
-  S.score = Math.round(100 * (0.5 * (accL + accR) / 2 + 0.3 * posAcc + 0.1 * eff + 0.1 * time));
+  S.score = Math.round(100 * (0.6 * (accL + accR) / 2 + 0.2 * eff + 0.2 * time));
   // grading playback: player chords, wrong notes distorted
   const playCol = (arr, col, baseDelay) => arr.forEach((m, i) => playNote(m, { pan: col === 'L' ? -0.8 : 0.8, dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
   playCol(S.cols.L, 'L', 0);

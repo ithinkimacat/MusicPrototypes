@@ -32,18 +32,22 @@ Three columns: Left, Center, Right. Notes start in Center (random order). Goal: 
 
 ## Grading
 
-- Pitch accuracy (correct note in correct column) — 50%
-- Position accuracy (correct vertical slot) — 30%
-- Efficiency (moves vs optimal) — 10%
-- Time — 10%
+- Pitch accuracy (correct note in correct column) — 60%
+- Position accuracy — dropped (prototype: column membership only)
+- Efficiency (moves vs optimal, optimal = 1 capture/note) — 20%
+- Time — 20%
+
+Pass = both chords exactly correct → next level. Fail → retry same deal.
 
 Partial feedback: correctly-placed note sustains slightly longer on audition (subtle; disabled at high difficulty).
 
 ## Difficulty
 
-- Lv 1–3: triads, 3 notes/target, 2 distractors
-- Lv 4–6: seventh chords, 4 notes/target, 3 distractors
-- Lv 7–10: extended chords, 5+ notes, 4+ distractors, targets share notes (ambiguity)
+- Lv 1–3: triads, 3 notes/target
+- Lv 4–6: seventh chords, 4 notes/target
+- Lv 7–10: extended chords, 5+ notes/target
+
+(Distractors skipped in prototype. Revisit at Lv7+ if ambiguity needed.)
 
 ## Audio
 
@@ -54,11 +58,6 @@ Partial feedback: correctly-placed note sustains slightly longer on audition (su
 - Wrong placement: distortion + detune on audition.
 - Submit success: consonant full chord. Failure: dissonant, then correct version.
 
-## Open questions (answer before v1 tuning)
+## Open questions
 
-1. Note range/ordering: sort vertical position by pitch height? Or fixed chord voicing slots?
-2. Same-pitch ambiguity at Lv 7+: position accuracy still graded when duplicates exist?
-3. Efficiency metric: optimal = min captures (n) or count Up/Down too?
-4. Time scoring curve — per-level par time?
-5. Fail state after submit: retry same layout or new deal?
-6. Distractor notes: where do they belong at submit — must they be excluded from both columns, or is "Center empty" wrong (distractors stay Center)?
+- Time scoring curve: currently linear decay over 120s par. Per-level par when difficulty scales?
