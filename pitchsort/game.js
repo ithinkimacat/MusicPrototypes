@@ -1,5 +1,5 @@
 // game.js — state machine + render (debug screen only, mirrors stereo axis).
-import { ctx, playNote, playChord, startCaptureVoice, playSwoosh } from './audio.js';
+import { ctx, playNote, playChord, startCaptureVoice } from './audio.js';
 import { Pad } from './input.js';
 import { makeLevel, deal } from './levels.js';
 
@@ -75,7 +75,7 @@ function onButton(b) {
     case 'LEFT': case 'RIGHT': {
       const i = ORDER.indexOf(S.cursor.col) + (b === 'RIGHT' ? 1 : -1);
       if (i >= 0 && i < 3) {
-        S.cursor.col = ORDER[i]; clampRow(); playSwoosh(b === 'RIGHT' ? 1 : -1); hearCursor(); render();
+        S.cursor.col = ORDER[i]; clampRow(); hearCursor(); render();
       }
       break;
     }

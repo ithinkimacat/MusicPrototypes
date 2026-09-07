@@ -42,61 +42,50 @@ export function playChord(midis, column, opts = {}) {
   midis.forEach((m, i) => playNote(m, { ...opts, pan: PAN[column], dur: 1.2, delay: base + i * 0.03 }));
 }
 
-// captured-note voice: SAME sine timbre as a normal note, swelling every 1.5s.
-// Smooth half-sine-ish envelope (no hard edges), warm echo per beat, graceful stop.
+// captured-note voice: ONE continuous sine (never stopped/restarted while held),
+// gain gated by a repeating smooth envelope, scheduled with lookahead so nothing
+// ever lands in the past (past-time envelope = instant gain jump = click).
 export function startCaptureVoice(midi, pan = 0) {
-  const out = ctx.createGain();
+  const P = 1.5, SWELL = 1.2, N = 48;
+  const curve = new Float32Array(N);
+  for (let i = 0; i < N; i++) { const x = i / (N - 1); curve[i] = 0.25 * Math.sin(Math.PI * Math.min(1, x * 1.1)) ** 1.6; }
+
+  const osc = ctx.createOscillator(); // plain sine — matches normal note timbre
+  osc.frequency.value = midiToFreq(midi);
+  const gate = ctx.createGain(); gate.gain.value = 0;
   const panner = ctx.createStereoPanner(); panner.pan.value = pan;
   const echo = ctx.createDelay(); echo.delayTime.value = 0.35;
   const fb = ctx.createGain(); fb.gain.value = 0.25;
   const wet = ctx.createGain(); wet.gain.value = 0.35;
   echo.connect(fb).connect(echo);
-  echo.connect(wet).connect(master);
-  panner.connect(out).connect(master);
-  panner.connect(echo);
+  osc.connect(gate).connect(panner);
+  panner.connect(master);
+  panner.connect(echo); echo.connect(wet).connect(master);
+  osc.start();
 
-  // smooth puff: half-sine curve over the beat, 0.3s of true silence between beats
-  const P = 1.5, SWELL = 1.2, N = 48;
-  const curve = new Float32Array(N);
-  for (let i = 0; i < N; i++) { const x = i / (N - 1); curve[i] = 0.25 * Math.sin(Math.PI * Math.min(1, x * 1.1)) ** 1.6; }
+  let nextT = ctx.currentTime + 0.05;
+  gate.gain.setValueCurveAtTime(curve, nextT, SWELL); nextT += P;
+  const iv = setInterval(() => { // schedule 0.4s ahead, no matter when the timer fires
+    while (nextT < ctx.currentTime + 0.4) {
+      gate.gain.setValueCurveAtTime(curve, nextT, SWELL);
+      nextT += P;
+    }
+  }, 150);
 
-  function beat() {
-    const t = ctx.currentTime;
-    const o = ctx.createOscillator(); // plain sine — matches normal note timbre
-    o.frequency.value = midiToFreq(midi);
-    const g = ctx.createGain();
-    g.gain.setValueCurveAtTime(curve, t, SWELL);
-    o.connect(g).connect(panner);
-    o.start(t); o.stop(t + P);
-  }
-  beat();
-  const iv = setInterval(beat, P * 1000);
   let dead = false;
   return {
     setPan(v) { panner.pan.linearRampToValueAtTime(v, ctx.currentTime + 0.12); },
     stop() {
       if (dead) return; dead = true;
       clearInterval(iv);
-      out.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4); // fade, don't cut — avoids click
-      wet.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
-      setTimeout(() => { panner.disconnect(); echo.disconnect(); fb.disconnect(); wet.disconnect(); out.disconnect(); }, 2000);
+      const t = ctx.currentTime;
+      gate.gain.cancelScheduledValues(t);
+      gate.gain.setTargetAtTime(0, t, 0.08); // smooth close, no cut
+      wet.gain.setTargetAtTime(0, t, 0.08);
+      osc.stop(t + 1);
+      setTimeout(() => { [osc, gate, panner, echo, fb, wet].forEach((n) => n.disconnect()); }, 1500);
     },
   };
-}
-
-// soft directional riser for column shifts: quick filtered gliss, up = right, down = left
-export function playSwoosh(dir) {
-  const t = ctx.currentTime;
-  const o = ctx.createOscillator();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(dir > 0 ? 500 : 700, t);
-  o.frequency.exponentialRampToValueAtTime(dir > 0 ? 900 : 400, t + 0.12);
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(0.07, t + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-  o.connect(g).connect(master);
-  o.start(t); o.stop(t + 0.2);
 }
 
 function distortionCurve(k) {
