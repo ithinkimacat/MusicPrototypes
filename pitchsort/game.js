@@ -1,6 +1,6 @@
 // game.js — state machine + render (debug screen only, mirrors stereo axis).
 import { ctx, playNote, playChord, startCaptureVoice } from './audio.js';
-import { Pad } from './input.js';
+import { Pad, detectFamily } from './input.js';
 import { makeLevel, deal } from './levels.js';
 
 const ORDER = ['L', 'C', 'R'];
@@ -213,7 +213,8 @@ function render() {
   el.innerHTML = `
     <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort — Level ${S.level}${S.phase === 'graded' ? (S.pass ? ' ✓' : ' ✗ retry (START)') : ''}</h2>
     <div class="row">${col('L')}${col('C')}${col('R')}</div>
-    <p style="color:#555">moves: ${S.moves}</p>`;
+    <p class="meta">moves: ${S.moves}</p>
+    ${controlsHtml()}`;
 
   el.querySelectorAll('.note[data-midi]').forEach((n) => {
     const b = before[n.dataset.midi];
@@ -239,13 +240,24 @@ function start() {
 addEventListener('keydown', start);
 addEventListener('pointerdown', start);
 
+// control hint for whatever pad is connected (defaults to Xbox labels until one is)
+function controlsHtml() {
+  const n = (pad.info ?? detectFamily()).names;
+  return `<p class="meta" style="max-width:34em;margin:1.5em auto 0">
+    D-pad move · hold ${n.bottom} grab, release to place · ${n.left}/${n.right} play Left/Right · ${n.top} play Center ·
+    ${n.lt}/${n.rt} preview targets${pad.info ? '' : ' · (connect gamepad)'}</p>`;
+}
+
 function renderTitle() {
+  const fam = pad.info ? pad.info.family.toUpperCase() : null;
   document.getElementById('debug').innerHTML = `
     <h2>PITCHSORT</h2>
     <p class="meta">Hear the chords. Sort the notes. Left vs Right.</p>
     <p style="margin-top:2em;animation:glow 1.6s ease-in-out infinite">PRESS ANY BUTTON TO START</p>
-    <p class="meta">Supports Xbox-layout gamepads (D-pad move · A grab · X/B/Y play columns · LT/RT targets)</p>`;
+    <p class="meta">${fam ? fam + ' pad connected ✓' : 'Gamepad supported: Xbox · PlayStation · Switch Pro. Press any pad button to detect.'}</p>
+    ${controlsHtml()}`;
 }
+addEventListener('gamepadconnected', () => { if (S.phase === 'title') renderTitle(); });
 // held-button auto-repeat: 300ms initial delay, then 90ms steps — fixes sluggish D-pad
 const repeat = { UP: 0, DOWN: 0, LEFT: 0, RIGHT: 0 };
 (function loop(t = 0) {
