@@ -30,6 +30,24 @@ function loadLevel(n, sameDeal) {
   setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); render(); }, 3000);
 }
 
+// scheduled DOM flashes synced to WebAudio note onsets (audio scheduled ahead, timers approximate it)
+function flashNote(m, delay, dur = 1.2) {
+  setTimeout(() => {
+    const n = document.querySelector(`[data-midi="${m}"]`);
+    n?.classList.add('sounding');
+    setTimeout(() => n?.classList.remove('sounding'), dur * 1000);
+  }, delay * 1000);
+}
+function flashCol(k, delay, dur = 1.5) {
+  setTimeout(() => {
+    const c = document.querySelector(`[data-col="${k}"]`);
+    c?.classList.add('sounding');
+    setTimeout(() => c?.classList.remove('sounding'), dur * 1000);
+  }, delay * 1000);
+}
+const auditionCol = (k, pan) => { playChord(S.cols[k], pan); S.cols[k].forEach((m, i) => flashNote(m, i * 0.03)); };
+const previewTarget = (k, pan) => { playChord(S.targets[k], pan); flashCol(k === 'L' ? 'L' : 'R', 0); };
+
 function colArr(k = S.cursor.col) { return S.cols[k]; }
 const clampRow = () => { S.cursor.row = Math.max(0, Math.min(S.cursor.row, colArr().length - (S.captured ? 0 : 1))); };
 
@@ -74,12 +92,12 @@ function onButton(b) {
       if (S.captured) {
         S.cols[S.captured.srcCol].splice(S.captured.srcRow, 0, S.captured.midi);
         S.captured = null; S.moves--; hearCursor(); render();
-      } else playChord(S.cols.R, 'right');
+      } else auditionCol('R', 'right');
       break;
-    case 'X': playChord(S.cols.L, 'left'); break;
-    case 'Y': playChord(S.cols.C, 'center'); break;
-    case 'LT': playChord(S.targets.L, 'left'); break;
-    case 'RT': playChord(S.targets.R, 'right'); break;
+    case 'X': auditionCol('L', 'left'); break;
+    case 'Y': auditionCol('C', 'center'); break;
+    case 'LT': previewTarget('L', 'left'); break;
+    case 'RT': previewTarget('R', 'right'); break;
     case 'START': if (S.cols.C.length === 0 && !S.captured) grade(); break;
   }
 }
@@ -107,7 +125,9 @@ function grade() {
   if (S.pass) {
     [60, 64, 67, 72].forEach((m, i) => playNote(m, { dur: 0.25, delay: i * 0.13 })); // jingle
     playChord(S.cols.L, 'left', { delay: 1.0 });
+    S.cols.L.forEach((m, i) => flashNote(m, 1.0 + i * 0.03));
     playChord(S.cols.R, 'right', { delay: 2.6 });
+    S.cols.R.forEach((m, i) => flashNote(m, 2.6 + i * 0.03));
   } else {
     const playCol = (arr, col, baseDelay) => arr.forEach((m, i) =>
       playNote(m, { pan: PANFOR[col], dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
@@ -140,7 +160,7 @@ function render() {
   const col = (k) => {
     let rows = S.cols[k].map((m, i) => noteHtml(m, k, i));
     if (S.captured && S.cursor.col === k) rows.splice(S.cursor.row, 0, noteHtml(S.captured.midi, k, S.cursor.row));
-    return `<div class="col ${S.cursor.col === k ? 'active' : ''}"><h3>${{ L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[k]}</h3>${rows.join('')}</div>`;
+    return `<div class="col ${S.cursor.col === k ? 'active' : ''}" data-col="${k}"><h3>${{ L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[k]}</h3>${rows.join('')}</div>`;
   };
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `
