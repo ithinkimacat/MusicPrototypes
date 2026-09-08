@@ -26,7 +26,20 @@ export class Pad {
     });
   }
   poll() {
-    if (this.idx === undefined) return;
+    if (this.idx === undefined) {
+      // pad was already connected or the connect event never fired (Safari):
+      // adopt the first connected pad found by polling
+      const gps = navigator.getGamepads?.() ?? [];
+      for (const g of gps) {
+        if (g?.connected) {
+          this.idx = g.index;
+          this.info = { ...detectFamily(g.id), id: g.id };
+          console.log(`[pad] adopted via poll: ${g.id} — rumble: ${g.vibrationActuator ? 'yes' : 'not exposed (USB only on macOS Chrome)'}`);
+          break;
+        }
+      }
+      if (this.idx === undefined) return;
+    }
     const gp = navigator.getGamepads()[this.idx];
     if (!gp) return;
     const now = new Set();

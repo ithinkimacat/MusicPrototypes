@@ -491,8 +491,10 @@ function renderTitle() {
 addEventListener('gamepadconnected', () => { if (S.phase === 'title') renderTitle(); });
 // held-button auto-repeat: 300ms initial delay, then 90ms steps (pad + keys)
 const repeat = { UP: 0, DOWN: 0, LEFT: 0, RIGHT: 0 };
+let titlePadShown = false;
 (function loop(t = 0) {
   pad.poll();
+  if (S.phase === 'title' && pad.info && !titlePadShown) { titlePadShown = true; renderTitle(); }
   tickRelease(held('A'));
   for (const b of Object.keys(repeat)) {
     if (!held(b)) { repeat[b] = 0; continue; }
