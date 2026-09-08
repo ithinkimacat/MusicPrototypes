@@ -31,6 +31,7 @@ function loadLevel(n, sameDeal) {
   S.optimal = d.center.length; // every note starts center: min = 1 capture+place per note
   S.cursor = { col: 'C', row: 0 };
   S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined; S.stars = undefined;
+  S.streakLost = 0;
   render(); // clears win/fade classes → fades in
   playChord(d.targetL, 'left');
   flashCol('L', 0); // always L then R — consistent spatial learning
@@ -142,11 +143,23 @@ function tickRelease(aHeld) {
   aHeldPrev = aHeld;
 }
 
-const PRAISE = ['WELL DONE!', 'GOOD JOB!', "YOU'RE ON FIRE!", 'PITCH PERFECT!', 'NAILED IT!', 'SWEET HARMONY!', 'PERFECT SORT!'];
+// praise escalates with streak tier — keeping the streak alive is the reward
+const PRAISE = [
+  ['WELL DONE!', 'GOOD JOB!', 'NICE!', 'SWEET HARMONY!'],
+  ['GREAT!', 'NAILED IT!', 'PITCH PERFECT!'],
+  ["YOU'RE ON FIRE!", 'UNSTOPPABLE!', 'PERFECT SORT!'],
+  ['LEGENDARY!', 'GODLIKE!', 'CHORD MASTER!'],
+];
+const praisePick = () => { const t = S.streak < 3 ? 0 : S.streak < 5 ? 1 : S.streak < 10 ? 2 : 3;
+  const p = PRAISE[t]; return p[Math.floor(Math.random() * p.length)]; };
 
-function confetti() {
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function confetti(burst = 70) {
+  if (REDUCED) return;
   const HUES = [0, 45, 120, 200, 280, 330];
-  for (let i = 0; i < 70; i++) {
+  const n = innerWidth < 700 ? Math.min(burst, 30) : burst; // small screens: fewer particles
+  for (let i = 0; i < n; i++) {
     const p = document.createElement('div');
     p.className = 'confetti';
     p.style.background = `hsl(${HUES[i % HUES.length]}, 90%, 60%)`;
@@ -168,11 +181,22 @@ function confetti() {
 
 function banner() {
   const el = document.getElementById('banner');
-  el.innerHTML = `<span>${PRAISE[Math.floor(Math.random() * PRAISE.length)]}</span>
-    <small>+${S.pts} pts</small>`;
+  el.innerHTML = `<span>${praisePick()}</span>
+    <small id="pts">+0 pts</small>`;
   el.classList.remove('show');
   void el.offsetWidth; // restart animation
   el.classList.add('show');
+  countUp(document.getElementById('pts'), S.pts);
+}
+
+// points tick up 0 -> target over ~550ms (ease-out cubic) — the cheapest satisfaction lever
+function countUp(el, target) {
+  const t0 = performance.now(), D = 550;
+  (function f(t) {
+    const p = Math.min(1, (t - t0) / D);
+    el.textContent = `+${Math.round(target * (1 - (1 - p) ** 3))} pts`;
+    if (p < 1) requestAnimationFrame(f);
+  })(t0);
 }
 
 // no score — pass/fail only.
@@ -185,17 +209,23 @@ function grade() {
     S.stars = over <= 0 ? 3 : over <= 0.25 ? 2.5 : over <= 0.5 ? 2 : over <= 0.75 ? 1.5 : 1;
     // score: level base + efficiency bonus, compounding streak multiplier (cap 2x)
     S.streak++;
+    S.streakPop = true; // badge scale-pop on next render
     const mult = Math.min(2, 1 + S.streak * 0.1);
     S.pts = Math.round((100 * S.level + 50 * S.stars) * mult);
     S.score += S.pts;
     if (S.score > S.best) { S.best = S.score; try { localStorage.setItem('ps-best', S.best); } catch {} }
-    banner(); confetti();
-    [60, 64, 67, 72].forEach((m, i) => playNote(m, { dur: 0.25, delay: i * 0.13 })); // jingle
+    banner();
+    confetti(25); // paced bursts land on each chord playback below
+    setTimeout(() => confetti(40), 600);
+    setTimeout(() => confetti(70), 1900);
+    const tr = Math.min(S.streak, 7); // jingle climbs a semitone per streak win (cap +7)
+    [60, 64, 67, 72].forEach((m, i) => playNote(m + tr, { dur: 0.25, delay: i * 0.13 })); // jingle
     playChord(S.cols.L, 'left', { delay: 0.6 });
     S.cols.L.forEach((m, i) => flashNote(m, 0.6 + i * 0.03));
     playChord(S.cols.R, 'right', { delay: 1.9 });
     S.cols.R.forEach((m, i) => flashNote(m, 1.9 + i * 0.03));
   } else {
+    S.streakLost = S.streak >= 2 ? S.streak : 0; // only mourn a streak worth keeping
     S.streak = 0; // failed submit breaks the multiplier
     const playCol = (arr, col, baseDelay) => arr.forEach((m, i) =>
       playNote(m, { pan: PANFOR[col], dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
@@ -205,10 +235,13 @@ function grade() {
     playChord(S.targets.R, 'right', { delay: 5.0 });
   }
   render();
+  if (S.pass && !REDUCED) document.querySelector('.row')?.classList.add('shake'); // 150ms kick, CSS kills it for reduced-motion too
 }
 
 // pitch → hue: blue (low) through green/yellow to red (high)
 const midiColor = (m) => `hsl(${240 - ((m - 45) / 31) * 240}, 90%, 55%)`;
+
+const FLAME = `<svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px;margin-right:.2em"><path fill="#ff9d2e" d="M12 2c1.5 4.5-5 6.5-5 12a5 5 0 0 0 10 0c0-2.2-1.2-3.2-1.2-3.2S19 12 19 15a7 7 0 0 1-14 0C5 8 12 6.5 12 2z"/></svg>`;
 
 function noteHtml(m, k, i) {
   const cls = [
@@ -222,8 +255,11 @@ function noteHtml(m, k, i) {
 
 function render() {
   const el = document.getElementById('debug');
-  document.getElementById('hud').innerHTML =
-    `SCORE ${S.score} · BEST ${S.best}${S.streak >= 2 ? ` · ${S.streak >= 3 ? '🔥 ' : ''}STREAK ${S.streak} ×${Math.min(2, 1 + S.streak * 0.1).toFixed(1)}` : ''}`;
+  const mult = Math.min(2, 1 + S.streak * 0.1).toFixed(1);
+  const badge = S.streak >= 1 ? ` · <span id="streakbadge" class="${S.streakPop ? 'pop' : ''}">${FLAME}${S.streak} <em>×${mult}</em></span>` : '';
+  const lost = S.streakLost ? ` · <span class="streak-lost">✕ streak ${S.streakLost} lost</span>` : '';
+  S.streakPop = false;
+  document.getElementById('hud').innerHTML = `SCORE ${S.score} · BEST ${S.best}${badge}${lost}`;
   // FLIP: snapshot block positions before rebuild, animate deltas after
   const before = {};
   el.querySelectorAll('.note[data-midi]').forEach((n) => { before[n.dataset.midi] = n.getBoundingClientRect(); });
