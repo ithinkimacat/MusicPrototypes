@@ -101,7 +101,7 @@ function onButton(b) {
       if (arr.length === 0) break;
       const midi = arr.splice(S.cursor.row, 1)[0];
       S.captured = { midi, srcCol: S.cursor.col, srcRow: S.cursor.row };
-      S.moves++;
+      pad.rumble(0.25, 0.35, 90);
       S.capVoice = startCaptureVoice(midi, PANFOR[S.cursor.col]);
       S.lastPan = PANFOR[S.cursor.col];
       S.everCaptured = true;
@@ -112,7 +112,7 @@ function onButton(b) {
       if (S.captured) {
         S.capVoice.stop(); S.capVoice = null;
         S.cols[S.captured.srcCol].splice(S.captured.srcRow, 0, S.captured.midi);
-        S.captured = null; S.moves--; hearCursor(); render();
+        S.captured = null; hearCursor(); render();
       } else auditionCol('R', 'right');
       break;
     case 'X': auditionCol('L', 'left'); break;
@@ -130,9 +130,11 @@ let aHeldPrev = false;
 function tickRelease(aHeld) {
   if (aHeldPrev && !aHeld && S.captured) {
     S.capVoice.stop(); S.capVoice = null;
+    if (S.cursor.col !== S.captured.srcCol) S.moves++; // grab-and-return isn't a move
     colArr().splice(S.cursor.row, 0, S.captured.midi);
     S.captured = null;
     S.everPlaced = true;
+    pad.rumble(0.4, 0.3, 110);
     hearCursor(); render();
     if (isPass()) { // auto-win: play feedback, then next level
       S.pass = true; grade();
@@ -251,6 +253,7 @@ function grade() {
   } else {
     S.streakLost = S.streak >= 2 ? S.streak : 0; // only mourn a streak worth keeping
     S.streak = 0; // failed submit breaks the multiplier
+    pad.rumble(0.9, 0.7, 350);
     const playCol = (arr, col, baseDelay) => arr.forEach((m, i) =>
       playNote(m, { pan: PANFOR[col], dur: 1.2, delay: baseDelay + i * 0.1, wrong: !S.targets[col].includes(m) }));
     playCol(S.cols.L, 'L', 0);
@@ -273,6 +276,13 @@ function winFx() {
   notesL.forEach((m, i) => flyChip(m, 0.6 + i * 0.03, per + (idx++ === 0 ? S.pts - per * n : 0)));
   notesR.forEach((m, i) => flyChip(m, 1.9 + i * 0.03, per + (idx++ === 0 ? S.pts - per * n : 0)));
   setTimeout(combineStacks, 2600);
+}
+
+// closing flourish at the merge — quick rising run, climbs with the streak like the opener
+function winOutro() {
+  const tr = Math.min(S.streak, 7);
+  [72, 76, 79, 84, 88].forEach((m, i) => playNote(m + tr, { dur: 0.16, delay: i * 0.07 }));
+  pad.rumble(1, 0.8, 450);
 }
 
 function flyChip(midi, delay, val) {
@@ -327,6 +337,7 @@ function combineStacks() {
     ], { duration: 950, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' }).onfinish = () => g.remove();
   });
   row.classList.add('shake'); // merge impact kick
+  setTimeout(winOutro, 550); // rising flourish lands as the stacks meet
   setTimeout(() => confetti(80), 640); // visual burst on the merge — no chord here,
   // a full-stack playback right before the new deal would mask the incoming L/R target chords
 }

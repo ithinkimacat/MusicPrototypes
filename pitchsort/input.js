@@ -33,4 +33,10 @@ export class Pad {
     this.prev = now;
   }
   held(name) { return this.prev.has(name); }
+  // dual-rumble where supported (Xbox/PS/Switch Pro in Chrome); silently no-ops elsewhere
+  rumble(strong = 0.5, weak = strong, ms = 120) {
+    if (this.idx === undefined) return;
+    const act = navigator.getGamepads?.()[this.idx]?.vibrationActuator;
+    act?.playEffect?.('dual-rumble', { duration: ms, strongMagnitude: strong, weakMagnitude: weak })?.catch?.(() => {});
+  }
 }
