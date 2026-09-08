@@ -85,9 +85,26 @@
   .confetti { position:fixed; top:0; left:0; width:10px; height:14px; border-radius:2px;
               pointer-events:none; z-index:15 }
 
-  #hud { position:fixed; top:.8em; left:0; right:0; text-align:center; font-size:.85em;
-         letter-spacing:.12em; color:#666; pointer-events:none; z-index:10 }
-  #streakbadge { display:inline-block; color:#ffb25e; font-weight:700; letter-spacing:.08em }
+  #hud { position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between;
+         align-items:flex-start; gap:1em; padding:.7em 1.4em 0; font-size:.85em;
+         pointer-events:none; z-index:10 }
+  .hud-cell { display:flex; flex-direction:column; gap:.1em; min-width:6.5em }
+  .hud-mid { align-items:center; text-align:center }
+  .hud-r { align-items:flex-end; text-align:right }
+  .hud-cell .lbl { font-size:.55em; letter-spacing:.35em; color:#555; font-weight:600 }
+  .hud-cell .val { font-size:1.7em; font-weight:800; color:#fff; letter-spacing:.06em;
+                   text-shadow:0 0 10px #ffffff33, 0 0 24px #ffb34744; font-variant-numeric:tabular-nums }
+  .hud-r .val { color:#ffd76a; text-shadow:0 0 12px #ffb34766 }
+  .hud-mid .val { font-size:1em; color:#bbb; text-shadow:none; font-weight:700; letter-spacing:.15em }
+  .val .retry { color:#ff6b6b; letter-spacing:.25em }
+  #scoreval { display:inline-block }
+  #scoreval.bump { animation:bump .18s cubic-bezier(.34,1.56,.64,1) }
+  @keyframes bump { 50% { transform:scale(1.22); color:#ffe9a8 } }
+  .pt { position:fixed; top:0; left:0; width:14px; height:14px; border-radius:50%;
+        background:radial-gradient(circle at 35% 35%, #ffe9a8, #ffc94d 60%, #d99a1f);
+        box-shadow:0 0 10px #ffc94dcc; pointer-events:none; z-index:30 }
+  #streakbadge { display:inline-block; color:#ffb25e; font-weight:700; letter-spacing:.08em;
+                 font-size:.8em }
   #streakbadge em { font-style:normal; color:#f7d774 }
   #streakbadge.pop { animation:spop .3s cubic-bezier(.34,1.56,.64,1) }
   @keyframes spop { 40% { transform:scale(1.5) } }

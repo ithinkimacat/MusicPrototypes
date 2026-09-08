@@ -56,7 +56,7 @@ export function playNote(midi, { pan = 0, dur = 0.5, wrong = false, sustain = fa
 
 export function playChord(midis, column, opts = {}) {
   const base = opts.delay ?? 0;
-  midis.forEach((m, i) => playNote(m, { ...opts, pan: PAN[column], dur: 1.2, delay: base + i * 0.03 }));
+  midis.forEach((m, i) => playNote(m, { ...opts, pan: PAN[column], dur: opts.dur ?? 1.2, delay: base + i * 0.03 }));
 }
 
 // captured-note voice: ONE continuous sine (never stopped/restarted while held),

@@ -31,7 +31,7 @@ function loadLevel(n, sameDeal) {
   S.optimal = d.center.length; // every note starts center: min = 1 capture+place per note
   S.cursor = { col: 'C', row: 0 };
   S.captured = null; S.moves = 0; S.phase = 'intro'; S.pass = undefined; S.stars = undefined;
-  S.streakLost = 0;
+  S.streakLost = 0; S.dispScore = undefined;
   render(); // clears win/fade classes → fades in
   playChord(d.targetL, 'left');
   flashCol('L', 0); // always L then R — consistent spatial learning
@@ -136,8 +136,8 @@ function tickRelease(aHeld) {
     hearCursor(); render();
     if (isPass()) { // auto-win: play feedback, then next level
       S.pass = true; grade();
-      setTimeout(() => document.getElementById('debug').classList.add('fade'), 2600);
-      setTimeout(() => loadLevel(S.level + 1), 2900); // jingle + chords ≈ 2.9s
+      setTimeout(() => document.getElementById('debug').classList.add('fade'), 3900);
+      setTimeout(() => loadLevel(S.level + 1), 4300); // jingle + chords + merge ≈ 4.3s
     }
   }
   aHeldPrev = aHeld;
@@ -214,10 +214,8 @@ function grade() {
     S.pts = Math.round((100 * S.level + 50 * S.stars) * mult);
     S.score += S.pts;
     if (S.score > S.best) { S.best = S.score; try { localStorage.setItem('ps-best', S.best); } catch {} }
-    banner();
-    confetti(25); // paced bursts land on each chord playback below
-    setTimeout(() => confetti(40), 600);
-    setTimeout(() => confetti(70), 1900);
+    S.dispScore = S.score - S.pts; // counter climbs as chips land
+    banner(); winFx();
     const tr = Math.min(S.streak, 7); // jingle climbs a semitone per streak win (cap +7)
     [60, 64, 67, 72].forEach((m, i) => playNote(m + tr, { dur: 0.25, delay: i * 0.13 })); // jingle
     playChord(S.cols.L, 'left', { delay: 0.6 });
@@ -235,7 +233,79 @@ function grade() {
     playChord(S.targets.R, 'right', { delay: 5.0 });
   }
   render();
-  if (S.pass && !REDUCED) document.querySelector('.row')?.classList.add('shake'); // 150ms kick, CSS kills it for reduced-motion too
+}
+
+// win payoff, timed to the chord playback in grade():
+//   0.6/1.9s — each played note spits a gold chip that flies into the SCORE counter,
+//              counter bumps on each landing
+//   2.6s     — both stacks fly to center and merge (ghost clones), combined chord + confetti
+function winFx() {
+  const notesL = S.cols.L, notesR = S.cols.R;
+  const n = notesL.length + notesR.length;
+  const per = Math.floor(S.pts / n);
+  let idx = 0;
+  notesL.forEach((m, i) => flyChip(m, 0.6 + i * 0.03, per + (idx++ === 0 ? S.pts - per * n : 0)));
+  notesR.forEach((m, i) => flyChip(m, 1.9 + i * 0.03, per + (idx++ === 0 ? S.pts - per * n : 0)));
+  setTimeout(combineStacks, 2600);
+}
+
+function flyChip(midi, delay, val) {
+  setTimeout(() => {
+    const noteEl = document.querySelector(`.note[data-midi="${midi}"]`);
+    const scoreEl = document.getElementById('scoreval');
+    if (!noteEl || !scoreEl) { bumpScore(val); return; }
+    if (REDUCED) { bumpScore(val); return; }
+    const r = noteEl.getBoundingClientRect(), t = scoreEl.getBoundingClientRect();
+    const x0 = r.left + r.width / 2, y0 = r.top + r.height / 2;
+    const c = document.createElement('div');
+    c.className = 'pt';
+    document.body.appendChild(c);
+    c.animate([
+      { transform: `translate(${x0 - 7}px, ${y0 - 7}px) scale(.3)`, opacity: 0 },
+      { transform: `translate(${x0 - 7}px, ${y0 - 34}px) scale(1)`, opacity: 1, offset: 0.25 },
+      { transform: `translate(${t.left + t.width / 2 - 7}px, ${t.top + t.height / 2 - 7}px) scale(.7)`, opacity: 1 },
+    ], { duration: 460, easing: 'cubic-bezier(.3,.7,.4,1)' }).onfinish = () => { bumpScore(val); c.remove(); };
+  }, delay * 1000 + 120);
+}
+
+function bumpScore(v) {
+  S.dispScore += v;
+  const s = document.getElementById('scoreval');
+  if (!s) return;
+  s.textContent = S.dispScore;
+  s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump');
+}
+
+function combineStacks() {
+  const row = document.querySelector('.row');
+  if (!row || S.phase !== 'graded') return;
+  const rr = row.getBoundingClientRect();
+  const cx = rr.left + rr.width / 2, cy = rr.top + rr.height / 2;
+  const notes = document.querySelectorAll('.col[data-col="L"] .note, .col[data-col="R"] .note');
+  const total = notes.length;
+  let i = 0;
+  notes.forEach((noteEl) => {
+    if (REDUCED) { noteEl.style.opacity = 0; return; }
+    const r = noteEl.getBoundingClientRect();
+    const g = noteEl.cloneNode();
+    g.className = 'note'; // drop cursor/outline classes from the clone
+    g.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;margin:0;z-index:25;animation:none;opacity:1;background:${noteEl.style.background}`;
+    document.body.appendChild(g);
+    noteEl.style.opacity = 0;
+    const ty = cy - (total * r.height) / 2 + i++ * r.height * 0.9;
+    const dx = cx - r.left - r.width / 2, dy = ty - r.top;
+    g.animate([
+      { transform: 'none', opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) scale(1.06)`, opacity: 1, offset: 0.72 },
+      { transform: `translate(${dx}px, ${dy}px) scale(1.35)`, opacity: 0 },
+    ], { duration: 950, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' }).onfinish = () => g.remove();
+  });
+  row.classList.add('shake'); // merge impact kick
+  // both chords together as the stacks meet — cadence resolution, sub root for weight
+  const all = [...S.cols.L, ...S.cols.R].sort((a, b) => a - b);
+  playChord(all, 'center', { delay: 0.62, dur: 1.6, sustain: true });
+  playNote(all[0] - 12, { dur: 1.4, delay: 0.62, sustain: true });
+  setTimeout(() => confetti(80), 640); // single burst, on the merged chord
 }
 
 // pitch → hue: blue (low) through green/yellow to red (high)
@@ -255,11 +325,19 @@ function noteHtml(m, k, i) {
 
 function render() {
   const el = document.getElementById('debug');
+  // arcade HUD: SCORE (glowing, left) · LEVEL + moves/stars (mid) · HI-SCORE (gold, right)
   const mult = Math.min(2, 1 + S.streak * 0.1).toFixed(1);
-  const badge = S.streak >= 1 ? ` · <span id="streakbadge" class="${S.streakPop ? 'pop' : ''}">${FLAME}${S.streak} <em>×${mult}</em></span>` : '';
-  const lost = S.streakLost ? ` · <span class="streak-lost">✕ streak ${S.streakLost} lost</span>` : '';
+  const badge = S.streak >= 1 ? `<span id="streakbadge" class="${S.streakPop ? 'pop' : ''}">${FLAME}${S.streak} <em>×${mult}</em></span>` : '';
+  const lost = S.streakLost ? `<span class="streak-lost">✕ streak ${S.streakLost} lost</span>` : '';
+  const midVal = S.phase === 'graded'
+    ? (S.pass ? starHtml(S.stars) : '<span class="retry">✗ RETRY — START</span>')
+    : `MOVES ${S.moves}/${S.optimal}`;
   S.streakPop = false;
-  document.getElementById('hud').innerHTML = `SCORE ${S.score} · BEST ${S.best}${badge}${lost}`;
+  document.getElementById('hud').innerHTML = `
+    <div class="hud-cell"><span class="lbl">SCORE</span><span class="val" id="scoreval">${S.dispScore ?? S.score}</span>
+      <span class="streak-row">${badge}${lost}</span></div>
+    <div class="hud-cell hud-mid"><span class="lbl">LEVEL ${S.level}</span><span class="val">${midVal}</span></div>
+    <div class="hud-cell hud-r"><span class="lbl">HI-SCORE</span><span class="val">${S.best}</span></div>`;
   // FLIP: snapshot block positions before rebuild, animate deltas after
   const before = {};
   el.querySelectorAll('.note[data-midi]').forEach((n) => { before[n.dataset.midi] = n.getBoundingClientRect(); });
@@ -272,9 +350,8 @@ function render() {
   };
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `
-    <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort — Level ${S.level}${S.phase === 'graded' ? (S.pass ? ' ✓' : ' ✗ retry (START)') : ''}${S.stars ? ' ' + starHtml(S.stars) : ''}</h2>
+    <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort</h2>
     <div class="row">${col('L')}${col('C')}${col('R')}</div>
-    <p class="meta">moves: ${S.moves} / min ${S.optimal}</p>
     ${controlsHtml()}`;
 
   el.querySelectorAll('.note[data-midi]').forEach((n) => {
