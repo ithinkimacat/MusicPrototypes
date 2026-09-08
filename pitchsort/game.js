@@ -181,11 +181,38 @@ function confetti(burst = 70) {
 
 function banner() {
   const el = document.getElementById('banner');
-  el.innerHTML = `<span>${praisePick()}<small id="pts">+0 pts</small></span>`;
-  el.classList.remove('show');
-  void el.offsetWidth; // restart animation
-  el.classList.add('show');
-  countUp(document.getElementById('pts'), S.pts);
+  el.innerHTML = `<span><b class="btext">${praisePick()}</b><small id="pts">+0 pts</small></span>`;
+  const span = el.firstElementChild;
+  const ptsEl = document.getElementById('pts');
+  // morph anchor: the columns' combined silhouette — message grows out of it, returns to it
+  const fr = span.getBoundingClientRect();
+  const rr = document.querySelector('.row')?.getBoundingClientRect() ?? fr;
+  const dx = rr.left + rr.width / 2 - (fr.left + fr.width / 2);
+  const dy = rr.top + rr.height / 2 - (fr.top + fr.height / 2);
+  const sx = rr.width / fr.width, sy = rr.height / fr.height;
+  if (REDUCED) {
+    span.style.opacity = 1;
+    countUp(ptsEl, S.pts);
+    setTimeout(() => { span.style.opacity = 0; }, 1600);
+    return;
+  }
+  // phase A: panel shape = columns panel, then springs into the message panel
+  span.animate([
+    { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, opacity: 0 },
+    { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, opacity: 0.9, offset: 0.3 },
+    { transform: 'none', opacity: 1 },
+  ], { duration: 650, easing: 'cubic-bezier(.2,1.2,.3,1)', fill: 'forwards' });
+  // text fades in once the panel has taken shape
+  span.querySelectorAll('.btext, small').forEach((t) =>
+    t.animate(
+      [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 400, delay: 380, easing: 'ease-out', fill: 'both' }));
+  setTimeout(() => { if (document.contains(ptsEl)) countUp(ptsEl, S.pts); }, 500);
+  // phase B: morph back into the columns just as the stacks merge (2.6s)
+  setTimeout(() => span.animate(
+    [{ transform: 'none', opacity: 1 },
+     { transform: `translate(${dx}px, ${dy}px) scale(0.12)`, opacity: 0 }],
+    { duration: 480, easing: 'cubic-bezier(.6,0,.8,.4)', fill: 'forwards' }), 2450);
 }
 
 // points tick up 0 -> target over ~550ms (ease-out cubic) — the cheapest satisfaction lever

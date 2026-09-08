@@ -47,7 +47,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .row.shake, .note.attract, .col.invite, .kchip.pulse { animation:none }
-    .win .note, #banner.show span { animation-duration:.01s }
+    .win .note { animation-duration:.01s }
   }
 
   .meta { color:#444; font-size:.85em; letter-spacing:.1em }
@@ -78,14 +78,6 @@
                  background:#0b0b0fd9; padding:12px 26px 14px; border-radius:16px;
                  border:1px solid #9fffb022; box-shadow:0 10px 50px #000c;
                  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px) }
-  #banner.show span { animation:banner 2.4s cubic-bezier(.2,1.2,.3,1) forwards }
-  @keyframes banner {
-    0% { opacity:0; transform:scale(.3) }
-    14% { opacity:1; transform:scale(1.08) }
-    22% { transform:scale(1) }
-    75% { opacity:1; transform:scale(1) }
-    100% { opacity:0; transform:scale(.98) }
-  }
   .confetti { position:fixed; top:0; left:0; width:10px; height:14px; border-radius:2px;
               pointer-events:none; z-index:15 }
 
