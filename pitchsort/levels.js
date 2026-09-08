@@ -4,6 +4,16 @@
 // middle of an 88-key piano; low end would vanish on laptop speakers.
 const SCALES = { maj: [0, 2, 4, 5, 7, 9, 11], min: [0, 2, 3, 5, 7, 8, 10] };
 
+// curated campaign, fetched once; game falls back to generated levels while unloaded
+let CAMPAIGN = null;
+export function campaignLength() { return CAMPAIGN ? CAMPAIGN.length : 0; }
+export function loadCampaign() {
+  return fetch('./levels.json')
+    .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+    .then((j) => { CAMPAIGN = j.levels; })
+    .catch(() => { CAMPAIGN = null; }); // offline/broken file -> generated ladder
+}
+
 // diatonic chord: stack thirds from scale degree, returned as intervals from root
 function diatonic(root, scaleName, degree, size) {
   const sc = SCALES[scaleName];
@@ -42,7 +52,13 @@ const FIRST20 = [
   [20, 10, 'maj', 1, 0, 4],           // Bb: iim7 | Imaj7
 ];
 
-export function makeLevel(n) {
+export function makeLevel(n, free = false) {
+  // curated campaign: exact notes from levels.json (authored by gen-levels.mjs)
+  if (!free && CAMPAIGN && n <= CAMPAIGN.length) {
+    const l = CAMPAIGN[n - 1];
+    return { curated: l, targetL: l.L, targetR: l.R, pool: l.pool, hint: l.hint };
+  }
+  if (free) return makeFree(n); // endless 3/4-note generation
   const row = FIRST20.find(([l]) => l === n);
   if (row) {
     const [, keyPc, scale, degL, degR, size, hint] = row;
@@ -53,8 +69,12 @@ export function makeLevel(n) {
       hint,
     };
   }
-  // generated ladder past 20: one side tonic, other a non-tonic degree
-  const size = Math.min(4 + Math.floor((n - 21) / 3), 5);
+  return makeFree(n);
+}
+
+// free play: endless diatonic tension|tonic pairs, 3 per side, every 4th level 4
+function makeFree(n) {
+  const size = n % 4 === 0 ? 4 : 3;
   const scale = n % 3 === 0 ? 'min' : 'maj';
   const keyPc = (n * 5) % 12;
   const homeLeft = n % 2 === 0;
@@ -75,7 +95,9 @@ const voice = (intervals, rootMin = 48, rootMax = 71) => {
   return out.every((m) => m <= 84) ? out : out.map((m) => m - 12); // overflow -> down an octave
 };
 
-export const deal = ({ targetL, targetR, hint, homeSide }) => {
+export const deal = ({ curated, targetL, targetR, hint, homeSide, pool }) => {
+  // curated: notes, sides and center order frozen in the file — reproducible by design
+  if (curated) return { targetL, targetR, homeSide: 'L', hint, center: [...pool] };
   const swapped = Math.random() < 0.5;
   let pair = swapped ? [targetR, targetL] : [targetL, targetR];
   let home = homeSide === 'L' ? (swapped ? 'R' : 'L') : (swapped ? 'L' : 'R');

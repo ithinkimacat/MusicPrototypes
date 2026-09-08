@@ -1,13 +1,14 @@
 // game.js — state machine + render (debug screen only, mirrors stereo axis).
 import { ctx, playNote, playChord, startCaptureVoice, setVolume, getVolume } from './audio.js';
 import { Pad, detectFamily } from './input.js';
-import { makeLevel, deal } from './levels.js';
+import { makeLevel, deal, loadCampaign, campaignLength } from './levels.js';
 
 const ORDER = ['L', 'C', 'R'];
 const PANFOR = { L: -0.8, C: 0, R: 0.8 };
 
 const S = {
   phase: 'intro', // intro | play | graded
+  mode: 'story', // story = curated levels.json (fixed for everyone); free = endless generated 3-4/side
   level: 1,
   cols: { L: [], C: [], R: [] },
   cursor: { col: 'C', row: 0 },
@@ -21,8 +22,12 @@ const S = {
 };
 
 function loadLevel(n, sameDeal) {
-  S.level = n; // was never updated — level counter stuck at 1
-  const d = sameDeal ? S.deal : deal(makeLevel(n));
+  // story finished -> roll into endless free play
+  if (S.mode === 'story' && !sameDeal && campaignLength() && n > campaignLength()) {
+    S.mode = 'free'; n = 1; S.justCompleted = true;
+  }
+  S.level = n;
+  const d = sameDeal ? S.deal : deal(makeLevel(n, S.mode === 'free'));
   S.deal = d;
   S.cols = { L: [], C: [...d.center], R: [] };
   S.targets = { L: d.targetL, R: d.targetR };
@@ -37,7 +42,7 @@ function loadLevel(n, sameDeal) {
   flashCol('L', 0); // always L then R — consistent spatial learning
   playChord(d.targetR, 'right', { delay: 1.4 });
   flashCol('R', 1.4);
-  setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); render(); }, 2200);
+  setTimeout(() => { S.phase = 'play'; S.t0 = performance.now(); S.justCompleted = false; render(); }, 2200);
 }
 
 // scheduled DOM flashes synced to WebAudio note onsets (audio scheduled ahead, timers approximate it)
@@ -77,7 +82,7 @@ function isPass() {
 }
 
 function onButton(b) {
-  if (S.phase === 'title') { start(); return; }
+  if (S.phase === 'title') { start(b === 'X'); return; } // X = free play picker on the title
   if (S.phase === 'graded') {
     if (b === 'START') loadLevel(S.pass ? S.level + 1 : S.level, !S.pass);
     return;
@@ -370,7 +375,7 @@ function render() {
   document.getElementById('hud').innerHTML = `
     <div class="hud-cell"><span class="lbl">SCORE</span><span class="val" id="scoreval">${S.dispScore ?? S.score}</span>
       <span class="streak-row">${badge}${lost}</span></div>
-    <div class="hud-cell hud-mid"><span class="lbl">LEVEL ${S.level}</span><span class="val">${midVal}</span></div>
+    <div class="hud-cell hud-mid"><span class="lbl">${S.mode === 'free' ? 'FREE' : 'LEVEL'} ${S.level}</span><span class="val">${midVal}</span></div>
     <div class="hud-cell hud-r"><span class="lbl">HI-SCORE</span><span class="val">${S.best}</span></div>`;
   // FLIP: snapshot block positions before rebuild, animate deltas after
   const before = {};
@@ -384,7 +389,7 @@ function render() {
   };
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `
-    <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">PitchSort</h2>
+    <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">${S.justCompleted ? 'STORY COMPLETE! — FREE PLAY' : `PitchSort${S.mode === 'free' ? ' · FREE' : ''}`}</h2>
     <div class="row">${col('L')}${col('C')}${col('R')}</div>
     ${controlsHtml()}`;
 
@@ -402,9 +407,14 @@ function render() {
 
 const pad = new Pad(onButton);
 
-function start() {
-  if (S.phase !== 'title') return;
+const campaignP = loadCampaign(); // prefetch while the title screen waits for input
+let bootOnce = false;
+async function start(free = false) {
+  if (S.phase !== 'title' || bootOnce) return;
+  bootOnce = true;
   ctx.resume(); // AudioContext stays suspended until a user gesture — gate on any input
+  S.mode = free ? 'free' : 'story';
+  await campaignP; // story needs the curated list loaded
   loadLevel(1);
 }
 // keyboard: arrows/WASD move, Space = grab(hold)/drop, J/K/L = play L/C/R,
@@ -415,7 +425,7 @@ let keyUsed = false;
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === ' ' || KEYMAP[k]) { keyUsed = true; e.preventDefault(); }
-  if (S.phase === 'title') { start(); return; }
+  if (S.phase === 'title') { start(k === 'j' || k === 'x'); return; } // J/X = free play
   if (k === ' ') { if (!keyHeld.space) { keyHeld.space = true; onButton('A'); } return; }
   if (k === '-') { setVolume(getVolume() - 0.1); render(); return; }
   if (k === '=') { setVolume(getVolume() + 0.1); render(); return; }
@@ -473,7 +483,8 @@ function renderTitle() {
   document.getElementById('debug').innerHTML = `
     <h2>PITCHSORT</h2>
     <p class="meta">Hear the chords. Sort the notes. Left vs Right.</p>
-    <p style="margin-top:2em;animation:glow 1.6s ease-in-out infinite">PRESS ANY BUTTON TO START</p>
+    <p style="margin-top:2em;animation:glow 1.6s ease-in-out infinite">PRESS ANY BUTTON — STORY</p>
+    <p class="meta">X&nbsp;=&nbsp;FREE PLAY (endless chords)</p>
     <p class="meta">${fam ? fam + ' pad connected ✓' : 'Play with gamepad (Xbox · PlayStation · Switch Pro) or keyboard.'}</p>
     ${controlsHtml()}`;
 }
