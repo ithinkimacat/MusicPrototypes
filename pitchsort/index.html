@@ -73,9 +73,9 @@
   #banner { position:fixed; top:0; right:0; bottom:0; left:0; /* inset:0 */ inset:0;
             display:grid; place-items:center; pointer-events:none; z-index:20 }
   #banner span { font-size:3.4em; font-weight:800; letter-spacing:.08em; color:#9fffb0; opacity:0;
-                 text-shadow:0 0 60px #4f86, 0 0 24px #4f84;
-                 /* panel separates the message from the note colors behind it */
-                 background:#0b0b0fd9; padding:.4em .8em; border-radius:.45em;
+                 text-shadow:0 0 60px #4f86, 0 0 24px #4f84; text-align:center;
+                 /* slim panel separates the message from the note colors behind it */
+                 background:#0b0b0fd9; padding:12px 26px 14px; border-radius:16px;
                  border:1px solid #9fffb022; box-shadow:0 10px 50px #000c;
                  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px) }
   #banner.show span { animation:banner 2.4s cubic-bezier(.2,1.2,.3,1) forwards }
