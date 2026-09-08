@@ -29,7 +29,7 @@ export const getVolume = () => vol;
 const PAN = { left: -0.8, center: 0, right: 0.8 };
 export const midiToFreq = (m) => 440 * 2 ** ((m - 69) / 12);
 
-export function playNote(midi, { pan = 0, dur = 0.5, wrong = false, sustain = false, delay = 0 } = {}) {
+export function playNote(midi, { pan = 0, dur = 0.5, wrong = false, sustain = false, delay = 0, vel = 1 } = {}) {
   const t = ctx.currentTime + delay;
   const osc = ctx.createOscillator();
   osc.type = wrong ? 'sawtooth' : 'sine';
@@ -39,7 +39,7 @@ export function playNote(midi, { pan = 0, dur = 0.5, wrong = false, sustain = fa
   const amp = ctx.createGain();
   const endDur = sustain ? dur * 1.5 : dur;
   amp.gain.setValueAtTime(0, t);
-  amp.gain.linearRampToValueAtTime(0.22, t + 0.03); // 30ms attack — avoids click at onset
+  amp.gain.linearRampToValueAtTime(0.22 * vel, t + 0.03); // 30ms attack — avoids click at onset
   amp.gain.exponentialRampToValueAtTime(0.001, t + endDur);
 
   let head = osc;

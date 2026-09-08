@@ -21,6 +21,8 @@ export class Pad {
     addEventListener('gamepadconnected', (e) => {
       this.idx = e.gamepad.index;
       this.info = { ...detectFamily(e.gamepad.id), id: e.gamepad.id };
+      // Xbox pads expose vibrationActuator over USB only (not BT) on macOS Chrome
+      console.log(`[pad] ${e.gamepad.id} — rumble: ${e.gamepad.vibrationActuator ? 'yes' : 'not exposed (try USB)'}`);
     });
   }
   poll() {

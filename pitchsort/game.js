@@ -278,10 +278,10 @@ function winFx() {
   setTimeout(combineStacks, 2600);
 }
 
-// closing flourish at the merge — quick rising run, climbs with the streak like the opener
+// closing flourish at the merge — soft arpeggio up the level's own notes
 function winOutro() {
-  const tr = Math.min(S.streak, 7);
-  [72, 76, 79, 84, 88].forEach((m, i) => playNote(m + tr, { dur: 0.16, delay: i * 0.07 }));
+  const all = [...new Set([...S.cols.L, ...S.cols.R])].sort((a, b) => a - b);
+  all.slice(-5).forEach((m, i) => playNote(m, { dur: 0.4, vel: 0.45, sustain: true, delay: i * 0.1 }));
   pad.rumble(1, 0.8, 450);
 }
 
