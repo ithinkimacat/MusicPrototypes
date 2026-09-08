@@ -136,8 +136,8 @@ function tickRelease(aHeld) {
     hearCursor(); render();
     if (isPass()) { // auto-win: play feedback, then next level
       S.pass = true; grade();
-      setTimeout(() => document.getElementById('debug').classList.add('fade'), 3900);
-      setTimeout(() => loadLevel(S.level + 1), 4300); // jingle + chords + merge ≈ 4.3s
+      setTimeout(() => document.getElementById('debug').classList.add('fade'), 3600);
+      setTimeout(() => loadLevel(S.level + 1), 4000); // jingle + L/R chords + merge ≈ 4s
     }
   }
   aHeldPrev = aHeld;
@@ -181,8 +181,7 @@ function confetti(burst = 70) {
 
 function banner() {
   const el = document.getElementById('banner');
-  el.innerHTML = `<span>${praisePick()}</span>
-    <small id="pts">+0 pts</small>`;
+  el.innerHTML = `<span>${praisePick()}<small id="pts">+0 pts</small></span>`;
   el.classList.remove('show');
   void el.offsetWidth; // restart animation
   el.classList.add('show');
@@ -301,11 +300,8 @@ function combineStacks() {
     ], { duration: 950, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' }).onfinish = () => g.remove();
   });
   row.classList.add('shake'); // merge impact kick
-  // both chords together as the stacks meet — cadence resolution, sub root for weight
-  const all = [...S.cols.L, ...S.cols.R].sort((a, b) => a - b);
-  playChord(all, 'center', { delay: 0.62, dur: 1.6, sustain: true });
-  playNote(all[0] - 12, { dur: 1.4, delay: 0.62, sustain: true });
-  setTimeout(() => confetti(80), 640); // single burst, on the merged chord
+  setTimeout(() => confetti(80), 640); // visual burst on the merge — no chord here,
+  // a full-stack playback right before the new deal would mask the incoming L/R target chords
 }
 
 // pitch → hue: blue (low) through green/yellow to red (high)
