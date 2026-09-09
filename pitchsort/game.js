@@ -1,5 +1,5 @@
 // game.js — state machine + render (debug screen only, mirrors stereo axis).
-import { ctx, playNote, playChord, startCaptureVoice, setVolume, getVolume } from './audio.js';
+import { ensureCtx, playNote, playChord, startCaptureVoice, setVolume, getVolume } from './audio.js';
 import { Pad, detectFamily } from './input.js';
 import { makeLevel, deal, loadCampaign, campaignLength } from './levels.js';
 
@@ -170,6 +170,21 @@ const praisePick = () => { const t = S.streak < 3 ? 0 : S.streak < 5 ? 1 : S.str
 
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// safeAnimate — wraps element.animate() and guarantees the onDone callback fires
+// even when Animation.onfinish is unreliable (older Firefox, cancelled animations).
+// The fallback timer fires at duration + 200ms if onfinish hasn't already run.
+function safeAnimate(el, keyframes, opts, onDone) {
+  const anim = el.animate(keyframes, opts);
+  if (!onDone) return anim;
+  let done = false;
+  const finish = () => { if (!done) { done = true; onDone(); } };
+  anim.onfinish = finish;
+  anim.oncancel = finish;
+  const dur = typeof opts === 'number' ? opts : (opts.duration ?? 300);
+  setTimeout(finish, dur + 200);
+  return anim;
+}
+
 function confetti(burst = 70) {
   if (REDUCED) return;
   const HUES = [0, 45, 120, 200, 280, 330];
@@ -183,14 +198,16 @@ function confetti(burst = 70) {
     const peak = -(200 + Math.random() * 300);
     const rot = (Math.random() - 0.5) * 1080;
     const x0 = innerWidth / 2, y0 = innerHeight * 0.4;
-    p.animate(
+    const dur = 1500 + Math.random() * 700;
+    safeAnimate(p,
       [
         { transform: `translate(${x0}px, ${y0}px) rotate(0deg)`, opacity: 1 },
         { transform: `translate(${x0 + dx * 0.6}px, ${y0 + peak}px) rotate(${rot * 0.5}deg)`, opacity: 1, offset: 0.35 },
         { transform: `translate(${x0 + dx}px, ${y0 + peak + 600}px) rotate(${rot}deg)`, opacity: 0 },
       ],
-      { duration: 1500 + Math.random() * 700, easing: 'cubic-bezier(.2,.6,.4,1)' },
-    ).onfinish = () => p.remove();
+      { duration: dur, easing: 'cubic-bezier(.2,.6,.4,1)' },
+      () => { if (p.isConnected) p.remove(); },
+    );
   }
 }
 
@@ -310,11 +327,11 @@ function flyChip(midi, delay, val) {
     const c = document.createElement('div');
     c.className = 'pt';
     document.body.appendChild(c);
-    c.animate([
+    safeAnimate(c, [
       { transform: `translate(${x0 - 7}px, ${y0 - 7}px) scale(.3)`, opacity: 0 },
       { transform: `translate(${x0 - 7}px, ${y0 - 34}px) scale(1)`, opacity: 1, offset: 0.25 },
       { transform: `translate(${t.left + t.width / 2 - 7}px, ${t.top + t.height / 2 - 7}px) scale(.7)`, opacity: 1 },
-    ], { duration: 460, easing: 'cubic-bezier(.3,.7,.4,1)' }).onfinish = () => { bumpScore(val); c.remove(); };
+    ], { duration: 460, easing: 'cubic-bezier(.3,.7,.4,1)' }, () => { bumpScore(val); if (c.isConnected) c.remove(); });
   }, delay * 1000 + 120);
 }
 
@@ -344,11 +361,11 @@ function combineStacks() {
     noteEl.style.opacity = 0;
     const ty = cy - (total * r.height) / 2 + i++ * r.height * 0.9;
     const dx = cx - r.left - r.width / 2, dy = ty - r.top;
-    g.animate([
+    safeAnimate(g, [
       { transform: 'none', opacity: 1 },
       { transform: `translate(${dx}px, ${dy}px) scale(1.06)`, opacity: 1, offset: 0.72 },
       { transform: `translate(${dx}px, ${dy}px) scale(1.35)`, opacity: 0 },
-    ], { duration: 950, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' }).onfinish = () => g.remove();
+    ], { duration: 950, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' }, () => { if (g.isConnected) g.remove(); });
   });
   row.classList.add('shake'); // merge impact kick
   setTimeout(winOutro, 550); // rising flourish lands as the stacks meet
@@ -445,11 +462,13 @@ function startEmbers() {
     e.style.top = r.top + 'px';
     document.body.appendChild(e);
     const dx = (Math.random() - 0.5) * 30;
-    e.animate(
+    const dur = 700 + Math.random() * 400;
+    safeAnimate(e,
       [{ transform: 'translateY(0) scale(1)', opacity: 0.9 },
        { transform: `translate(${dx}px,-${34 + Math.random() * 26}px) scale(0.2)`, opacity: 0 }],
-      { duration: 700 + Math.random() * 400, easing: 'ease-out' }
-    ).onfinish = () => e.remove();
+      { duration: dur, easing: 'ease-out' },
+      () => { if (e.isConnected) e.remove(); },
+    );
   }, S.streak >= 10 ? 90 : 160); // full streak burns denser
 }
 function stopEmbers() { clearInterval(emberIv); emberIv = 0; }
@@ -459,7 +478,7 @@ let bootOnce = false;
 async function start(free = false) {
   if (S.phase !== 'title' || bootOnce) return;
   bootOnce = true;
-  ctx.resume(); // AudioContext stays suspended until a user gesture — gate on any input
+  ensureCtx().resume(); // create + resume AudioContext on first user gesture
   S.mode = free ? 'free' : 'story';
   await campaignP; // story needs the curated list loaded
   loadLevel(1);
@@ -491,6 +510,9 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => {
   const k = e.key.toLowerCase();
+  // Prevent Firefox from consuming the Space keyup for page scrolling — without
+  // this, keyHeld.space can stay true permanently and the captured note never drops.
+  if (k === ' ' || KEYMAP[k]) e.preventDefault();
   if (k === ' ') keyHeld.space = false;
   const b = KEYMAP[k];
   if (b) keyHeld[b] = false;

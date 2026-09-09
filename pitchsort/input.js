@@ -40,7 +40,7 @@ export class Pad {
       }
       if (this.idx === undefined) return;
     }
-    const gp = navigator.getGamepads()[this.idx];
+    const gp = navigator.getGamepads?.()[this.idx];
     if (!gp) return;
     const now = new Set();
     for (const [name, i] of Object.entries(BTN)) if (gp.buttons[i]?.pressed) now.add(name);
