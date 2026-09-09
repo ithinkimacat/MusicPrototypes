@@ -95,11 +95,12 @@
               pointer-events:none; z-index:15 }
   @keyframes glow { 50% { opacity:.35 } }
 
-  /* how-to-play: floating [i] + overlay */
-  #helpbtn { position:fixed; right:1.2em; bottom:1.2em; width:40px; height:40px; border-radius:50%;
+  /* floating corner buttons: [i] help, [⛶] fullscreen */
+  .cornerbtn { position:fixed; right:1.2em; bottom:1.2em; width:40px; height:40px; border-radius:50%;
              border:1px solid #ffffff2e; background:#ffffff10; color:#ccc; font:700 17px ui-monospace;
              cursor:pointer; z-index:41; transition:border-color .2s, transform .12s }
-  #helpbtn:hover { border-color:#fff; transform:scale(1.08) }
+  #fsbtn { right: calc(1.2em + 48px) }
+  .cornerbtn:hover { border-color:#fff; transform:scale(1.08) }
   #help { position:fixed; inset:0; display:none; place-items:center; z-index:40;
           background:#05050899; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px) }
   #help.show { display:grid }
@@ -161,7 +162,8 @@
 <body>
 <div id="hud"></div>
 <div id="banner"></div>
-<button id="helpbtn" title="How to play [I]">i</button>
+<button id="fsbtn" class="cornerbtn" title="Fullscreen [F]">&#x26F6;</button>
+<button id="helpbtn" class="cornerbtn" title="How to play [I]">i</button>
 <div id="help"><div class="help-panel">
   <h3>HOW TO PLAY</h3>
   <p>Two target chords play at the start — one panned <b>Left</b>, one <b>Right</b>.

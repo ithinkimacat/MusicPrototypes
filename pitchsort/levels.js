@@ -96,8 +96,8 @@ const voice = (intervals, rootMin = 48, rootMax = 71) => {
 };
 
 export const deal = ({ curated, targetL, targetR, hint, homeSide, pool }) => {
-  // curated: notes, sides and center order frozen in the file — reproducible by design
-  if (curated) return { targetL, targetR, homeSide: 'L', hint, center: [...pool] };
+  // curated: notes and sides frozen in the file; center order randomized per deal
+  if (curated) return { targetL, targetR, homeSide: 'L', hint, center: shuffle([...pool]) };
   const swapped = Math.random() < 0.5;
   let pair = swapped ? [targetR, targetL] : [targetL, targetR];
   let home = homeSide === 'L' ? (swapped ? 'R' : 'L') : (swapped ? 'L' : 'R');

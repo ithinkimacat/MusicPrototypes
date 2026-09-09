@@ -445,6 +445,7 @@ addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === ' ' || KEYMAP[k]) { keyUsed = true; e.preventDefault(); }
   if (k === 'i') { S.help = !S.help; render(); return; }
+  if (k === 'f') { toggleFs(); return; }
   if (S.help) { S.help = false; render(); return; } // any key dismisses the guide
   if (S.phase === 'title') { start(k === 'j' || k === 'x'); return; } // J/X = free play
   if (k === ' ') { if (!keyHeld.space) { keyHeld.space = true; onButton('A'); } return; }
@@ -465,6 +466,9 @@ const held = (b) => pad.held(b) || (b === 'A' ? !!keyHeld.space : !!keyHeld[b]);
 document.getElementById('helpbtn').addEventListener('click', (e) => {
   e.stopPropagation(); S.help = !S.help; render();
 });
+const toggleFs = () =>
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+document.getElementById('fsbtn').addEventListener('click', (e) => { e.stopPropagation(); toggleFs(); });
 addEventListener('pointerdown', (e) => {
   if (e.target.closest('#helpbtn')) return;
   if (S.help) { S.help = false; render(); return; } // tap outside closes, doesn't start/act
