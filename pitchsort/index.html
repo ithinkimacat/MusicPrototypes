@@ -4,7 +4,8 @@
 <style>
   :root { --fs: 15px }
   body { background:#0b0b0f; color:#e8e8ee; font:var(--fs)/1.5 ui-monospace, monospace; margin:0;
-         display:grid; place-items:center; min-height:100vh }
+         display:grid; grid-template-rows:auto 1fr; place-items:center; min-height:100vh }
+  #debug { grid-row:2; align-self:center }
   /* small-screen hardware: scale the whole board, controls cheat-sheet no longer fits */
   @media (max-width: 720px), (max-height: 560px) {
     :root { --fs: clamp(9px, 2.8vmin, 15px) }
@@ -105,15 +106,16 @@
 
   /* story map: winding serpentine of level spots, green dot slides down it (~24 visible).
      In-flow grid item above the board in its own frame — never overlaps the playfield */
-  #pathwrap { grid-row:1; justify-self:center; margin-top:4.2em;
-              width:min(38vw, 11em); pointer-events:none;
-              background:#12121a; border:1px solid #ffffff1a; border-radius:12px;
-              padding:.5em .9em; box-shadow:0 6px 24px #0008 }
+  #pathwrap { grid-row:1; justify-self:center; margin-top:.8em;
+              width:min(34vw, 9.5em); pointer-events:none;
+              background:#12121ac9; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+              border:1px solid #ffffff22; border-radius:12px;
+              padding:.35em .7em; box-shadow:0 6px 24px #0008 }
   #pathwrap:empty { display:none } /* title / free play: no frame, no gap */
   .wpath { display:block; width:100%; height:auto }
-  .wpath path { stroke:#ffffff1c; stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round }
-  .wspot circle { fill:#1a1a22; stroke:#ffffff2a; stroke-width:1 }
-  .wspot text { fill:#8a8a96; font-size:9px; text-anchor:middle; font-family:inherit }
+  .wpath path { stroke:#ffffff30; stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round }
+  .wspot circle { fill:#1a1a22; stroke:#ffffff45; stroke-width:1.2 }
+  .wspot text { fill:#c0c0cc; font-size:11px; text-anchor:middle; font-family:inherit }
   .wspot.done circle { fill:#ffc94d22; stroke:#ffd76a }
   .wspot.done text { fill:#ffd76a }
   .wspot.now circle { fill:#8fffa8; stroke:#d6ffde; filter:drop-shadow(0 0 6px #9fffb0cc) }
@@ -123,7 +125,7 @@
           transition:transform .55s cubic-bezier(.34,1.4,.64,1); animation:wdotpulse 1.6s ease-in-out infinite }
   @keyframes wdotpulse { 50% { filter:drop-shadow(0 0 14px #a4ffb8) } }
   @media (prefers-reduced-motion: reduce) { .wdot { animation:none; transition:none } }
-  @media (max-width: 720px), (max-height: 560px) { #pathwrap { width:min(42vw, 9em); margin-top:3.6em } }
+  @media (max-width: 720px), (max-height: 560px) { #pathwrap { width:min(38vw, 8em) } }
 
   /* title mode toggle: STORY | FREE */
   .tmodes { display:flex; gap:.8em; justify-content:center; margin:1.2em 0 0 }
