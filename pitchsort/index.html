@@ -46,7 +46,8 @@
   @keyframes shake { 20%,60% { transform:translateX(-4px) } 40%,80% { transform:translateX(4px) } }
 
   @media (prefers-reduced-motion: reduce) {
-    .row.shake, .note.attract, .col.invite, .kchip.pulse, .note.cursor.breathe { animation:none }
+    .row.shake, .note.attract, .col.invite, .kchip.pulse, .note.cursor.breathe,
+    .hud-cell.fire .sfill, .hud-cell.fire .snum { animation:none }
     .row.dealt .note { animation-delay:0s; animation-duration:.15s }
     .win .note { animation-duration:.01s }
   }
@@ -99,6 +100,8 @@
              cursor:pointer; z-index:41; transition:border-color .2s, transform .12s }
   #fsbtn { right: calc(1.2em + 48px) }
   .cornerbtn:hover { border-color:#fff; transform:scale(1.08) }
+  #ctlwrap { position:fixed; inset:0; pointer-events:none } /* out of grid flow → board stays centered */
+  #ctlwrap .ctl-groups { pointer-events:auto }
   #help { position:fixed; inset:0; display:none; place-items:center; z-index:40;
           background:#05050899; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px) }
   #help.show { display:grid }
@@ -129,19 +132,23 @@
         background:radial-gradient(circle at 35% 35%, #ffe9a8, #ffc94d 60%, #d99a1f);
         box-shadow:0 0 10px #ffc94dcc, -16px 16px 10px -4px #ffc94d4d; /* motion trail */
         pointer-events:none; z-index:30 }
-  /* streak as a line: bar under SCORE, fills toward streak 10, neon by tier */
+  /* streak as a line: bar under SCORE, fills toward streak 10. Heat ramp:
+     gold → orange → flaming red at max (--heat hue set per streak in JS);
+     bar grows thicker/taller as it fills, and flickers like fire from streak 7 */
   .srow { display:flex; align-items:center; gap:.6em; margin-top:.25em }
-  .snum { font-weight:900; font-size:1.1em; min-width:1.2em; display:inline-block }
+  .snum { font-weight:900; font-size:1.1em; min-width:1.2em; display:inline-block;
+          color:hsl(var(--heat,45) 100% 62%); text-shadow:0 0 12px hsl(var(--heat,45) 100% 55% / .7) }
   .snum.pop { animation:spop .3s cubic-bezier(.34,1.56,.64,1) }
-  .strack { width:7em; height:5px; border-radius:3px; background:#ffffff14; overflow:hidden }
-  .sfill { height:100%; border-radius:3px; transition:width .35s cubic-bezier(.2,1,.3,1) }
+  .strack { width:7em; height:var(--barh,5px); border-radius:4px; background:#ffffff14; overflow:visible;
+            transition:height .3s }
+  .sfill { position:relative; height:100%; border-radius:4px;
+           background:linear-gradient(90deg, hsl(var(--heat,45) 100% 62%), hsl(var(--heat,45) 100% 48%) 70%, #fff0c0);
+           box-shadow:0 0 8px hsl(var(--heat,45) 100% 55% / .8), 0 0 20px hsl(var(--heat,45) 100% 50% / .35);
+           transition:width .35s cubic-bezier(.2,1,.3,1) }
+  .hud-cell.fire .sfill { animation:flicker .32s ease-in-out infinite alternate }
+  @keyframes flicker { from { filter:brightness(1) } to { filter:brightness(1.35) hue-rotate(-4deg) } }
+  .hud-cell.fire .snum { animation:breathe 1.1s ease-in-out infinite }
   .smult { font-size:.65em; letter-spacing:.2em; color:#888; font-weight:600 }
-  .hud-cell[data-tier="0"] { --tier:#7ec8ff }
-  .hud-cell[data-tier="1"] { --tier:#ffd76a }
-  .hud-cell[data-tier="2"] { --tier:#ff9d2e }
-  .hud-cell[data-tier="3"] { --tier:#ff5ec4 }
-  .hud-cell[data-tier] .snum { color:#fff; text-shadow:0 0 12px var(--tier) }
-  .hud-cell[data-tier] .sfill { background:var(--tier); box-shadow:0 0 8px var(--tier) }
   .ember { position:fixed; width:5px; height:5px; border-radius:50%; z-index:29; pointer-events:none;
            background:radial-gradient(circle, #ffe9a8, #ff9d2e 55%, #ff5e3a) }
   .lost { color:#ff6b6b; font-weight:800; font-size:.85em; letter-spacing:.15em;

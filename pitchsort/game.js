@@ -377,21 +377,22 @@ function render() {
     ? (S.pass ? starHtml(S.stars) : '<span class="retry">✗ RETRY — START</span>')
     : `MOVES ${S.moves}/${S.optimal}`;
   const midLbl = S.justCompleted ? 'STORY COMPLETE! · FREE' : `${S.mode === 'free' ? 'FREE' : 'LEVEL'} ${S.level}`;
-  // streak as a line under SCORE (GH-style): bar fills toward streak 10, neon by tier
-  const tier = S.streak < 3 ? 0 : S.streak < 5 ? 1 : S.streak < 10 ? 2 : 3;
+  // streak as a line under SCORE: bar+number grow with streak, heat gold → flaming red, fires at 7+
+  const heat = S.streak >= 10 ? 0 : 45 - S.streak * 4.5; // hue ramp, red at max
+  const sz = 1 + Math.min(10, S.streak) * 0.09;
   const streakRow = S.streak >= 1
-    ? `<div class="srow"><span class="snum ${S.streakPop ? 'pop' : ''}" style="font-size:${1.1 + Math.min(10, S.streak) * 0.1}em">${S.streak}</span>
-       <span class="strack"><span class="sfill" style="display:block;width:${Math.min(1, S.streak / 10) * 100}%"></span></span>
+    ? `<div class="srow"><span class="snum ${S.streakPop ? 'pop' : ''}" style="font-size:${sz}em">${S.streak}</span>
+       <span class="strack" style="--barh:${3 + Math.min(10, S.streak) * 0.55}px"><span class="sfill" style="display:block;width:${Math.min(1, S.streak / 10) * 100}%"></span></span>
        <span class="smult">×${mult}</span></div>`
     : S.streakLost ? `<div class="srow"><span class="lost">✕ STREAK ${S.streakLost} LOST</span></div>` : '';
   document.getElementById('hud').innerHTML = `
-    <div class="hud-cell" data-tier="${S.streak >= 1 ? tier : ''}"><span class="lbl">SCORE</span>
+    <div class="hud-cell ${S.streak >= 7 ? 'fire' : ''}" style="--heat:${heat}"><span class="lbl">SCORE</span>
       <span class="val" id="scoreval">${S.dispScore ?? S.score}</span>${streakRow}</div>
     <div class="hud-cell hud-mid"><span class="lbl">${midLbl}</span><span class="val">${midVal}</span></div>
     <div class="hud-cell hud-r"><span class="lbl">HI-SCORE</span><span class="val">${S.best}</span></div>`;
   S.streakPop = false;
   // hot streak (>=8 of 10): embers rise off the streak bar
-  if (S.streak >= 8) startEmbers(); else stopEmbers();
+  if (S.streak >= 7) startEmbers(); else stopEmbers();
   document.getElementById('help').classList.toggle('show', !!S.help);
   // FLIP: snapshot block positions before rebuild, animate deltas after
   const before = {};
@@ -430,13 +431,13 @@ let emberIv = 0;
 function startEmbers() {
   if (emberIv || REDUCED) return;
   emberIv = setInterval(() => {
-    const n = document.querySelector('#hud .snum');
-    if (!n || S.streak < 8) { stopEmbers(); return; }
+    const n = document.querySelector('#hud .sfill');
+    if (!n || S.streak < 7) { stopEmbers(); return; }
     const r = n.getBoundingClientRect();
     const e = document.createElement('div');
     e.className = 'ember';
-    e.style.left = r.left + Math.random() * r.width + 'px';
-    e.style.top = r.bottom - 4 + 'px';
+    e.style.left = r.left + Math.random() * r.width + 'px'; // anywhere along the fill
+    e.style.top = r.top + 'px';
     document.body.appendChild(e);
     const dx = (Math.random() - 0.5) * 30;
     e.animate(
