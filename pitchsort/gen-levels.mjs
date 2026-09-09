@@ -21,15 +21,15 @@ const ROWS = [
   ['C: M2', , [60], [62]],
   ['C: m2', , [60], [61]], // semitone
 
-  // --- 2-note (11): consonant dyads far apart -> whole-step shifts -> semitone clusters ---
+  // --- 2-note (11): same dyad a full octave apart -> registers narrow -> semitone clusters ---
+  ['C: M3 dyads, 8va', , [60, 64], [72, 76]],   // identical intervals, octaves apart
+  ['C: fifths, 8va+1', , [60, 67], [74, 79]],   // wide, consonant, easy
   ['C: I | V', , [60, 64], [67, 71]],
-  ['C: M3 dyads, 8va', , [60, 64], [72, 76]],
   ['C: dyads, tritone off', , [60, 64], [66, 70]],
   ['C: dyads, P4 off', , [60, 64], [65, 69]],
   ['C: fifths, M2 off', , [64, 67], [69, 72]],
   ['C: M3/F#m dyads, m2', , [64, 69], [65, 70]],
   ['C: fifths, m2 off', , [60, 67], [61, 68]],
-  ['C: M3 dyads, M2 off', , [60, 64], [62, 65]],
   ['C: fourths, m2 off', , [60, 65], [61, 66]],
   ['C: m2 inside each side', , [60, 61], [64, 65]],
   ['C: chromatic tetrachord', , [60, 61], [62, 63]], // C C# D D#
