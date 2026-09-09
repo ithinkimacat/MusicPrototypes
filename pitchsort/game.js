@@ -82,6 +82,7 @@ function isPass() {
 }
 
 function onButton(b) {
+  if (S.help) { S.help = false; render(); return; } // any button dismisses the guide
   if (S.phase === 'title') { start(b === 'X'); return; } // X = free play picker on the title
   if (S.phase === 'graded') {
     if (b === 'START') loadLevel(S.pass ? S.level + 1 : S.level, !S.pass);
@@ -367,36 +368,20 @@ function render() {
   const midVal = S.phase === 'graded'
     ? (S.pass ? starHtml(S.stars) : '<span class="retry">✗ RETRY — START</span>')
     : `MOVES ${S.moves}/${S.optimal}`;
+  // streak as a line under SCORE (GH-style): bar fills toward streak 10, neon by tier
+  const tier = S.streak < 3 ? 0 : S.streak < 5 ? 1 : S.streak < 10 ? 2 : 3;
+  const streakRow = S.streak >= 1
+    ? `<div class="srow"><span class="snum ${S.streakPop ? 'pop' : ''}">${S.streak}</span>
+       <span class="strack"><span class="sfill" style="display:block;width:${Math.min(1, S.streak / 10) * 100}%"></span></span>
+       <span class="smult">×${mult}</span></div>`
+    : S.streakLost ? `<div class="srow"><span class="lost">✕ STREAK ${S.streakLost} LOST</span></div>` : '';
   document.getElementById('hud').innerHTML = `
-    <div class="hud-cell"><span class="lbl">SCORE</span><span class="val" id="scoreval">${S.dispScore ?? S.score}</span></div>
+    <div class="hud-cell" data-tier="${S.streak >= 1 ? tier : ''}"><span class="lbl">SCORE</span>
+      <span class="val" id="scoreval">${S.dispScore ?? S.score}</span>${streakRow}</div>
     <div class="hud-cell hud-mid"><span class="lbl">${S.mode === 'free' ? 'FREE' : 'LEVEL'} ${S.level}</span><span class="val">${midVal}</span></div>
     <div class="hud-cell hud-r"><span class="lbl">HI-SCORE</span><span class="val">${S.best}</span></div>`;
-
-  // combo counter, GH/Beat Saber style: big count + ring filling toward the next multiplier tick
-  const combo = document.getElementById('combo');
-  if (S.streak >= 1) {
-    const tier = S.streak < 3 ? 0 : S.streak < 5 ? 1 : S.streak < 10 ? 2 : 3;
-    combo.dataset.tier = tier;
-    const CIRC = 2 * Math.PI * 21;
-    const frac = Math.min(1, S.streak / 10); // ring full at streak 10 (mult cap)
-    combo.innerHTML = `
-      <svg class="cring" viewBox="0 0 50 50" width="3.4em" height="3.4em">
-        <circle cx="25" cy="25" r="21" fill="none" stroke="#ffffff14" stroke-width="1.5"/>
-        <circle class="cfill" cx="25" cy="25" r="21" fill="none" stroke-width="3"
-                stroke-linecap="round" transform="rotate(-90 25 25)"
-                stroke-dasharray="${(frac * CIRC).toFixed(1)} ${CIRC.toFixed(1)}"/>
-      </svg>
-      <span class="cstack">
-        <span class="cnum ${S.streakPop ? 'pop' : ''}">${S.streak}</span>
-        <span class="clbl">×${mult} MULTI</span>
-      </span>`;
-  } else if (S.streakLost) {
-    combo.dataset.tier = '';
-    combo.innerHTML = `<span class="lost">✕ STREAK ${S.streakLost} LOST</span>`;
-  } else {
-    combo.innerHTML = ''; combo.dataset.tier = '';
-  }
   S.streakPop = false;
+  document.getElementById('help').classList.toggle('show', !!S.help);
   // FLIP: snapshot block positions before rebuild, animate deltas after
   const before = {};
   el.querySelectorAll('.note[data-midi]').forEach((n) => { before[n.dataset.midi] = n.getBoundingClientRect(); });
@@ -445,6 +430,8 @@ let keyUsed = false;
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === ' ' || KEYMAP[k]) { keyUsed = true; e.preventDefault(); }
+  if (k === 'i') { S.help = !S.help; render(); return; }
+  if (S.help) { S.help = false; render(); return; } // any key dismisses the guide
   if (S.phase === 'title') { start(k === 'j' || k === 'x'); return; } // J/X = free play
   if (k === ' ') { if (!keyHeld.space) { keyHeld.space = true; onButton('A'); } return; }
   if (k === '-') { setVolume(getVolume() - 0.1); render(); return; }
@@ -461,7 +448,14 @@ addEventListener('keyup', (e) => {
   if (b) keyHeld[b] = false;
 });
 const held = (b) => pad.held(b) || (b === 'A' ? !!keyHeld.space : !!keyHeld[b]);
-addEventListener('pointerdown', start);
+document.getElementById('helpbtn').addEventListener('click', (e) => {
+  e.stopPropagation(); S.help = !S.help; render();
+});
+addEventListener('pointerdown', (e) => {
+  if (e.target.closest('#helpbtn')) return;
+  if (S.help) { S.help = false; render(); return; } // tap outside closes, doesn't start/act
+  start();
+});
 
 const starHtml = (stars) =>
   [1, 2, 3].map((i) => `<span class="star ${stars >= i ? 'full' : stars >= i - 0.5 ? 'half' : ''}">★</span>`).join('');

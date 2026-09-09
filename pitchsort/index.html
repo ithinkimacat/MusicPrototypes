@@ -82,17 +82,33 @@
               pointer-events:none; z-index:15 }
   @keyframes glow { 50% { opacity:.35 } }
 
+  /* how-to-play: floating [i] + overlay */
+  #helpbtn { position:fixed; right:1.2em; bottom:1.2em; width:40px; height:40px; border-radius:50%;
+             border:1px solid #ffffff2e; background:#ffffff10; color:#ccc; font:700 17px ui-monospace;
+             cursor:pointer; z-index:41; transition:border-color .2s, transform .12s }
+  #helpbtn:hover { border-color:#fff; transform:scale(1.08) }
+  #help { position:fixed; inset:0; display:none; place-items:center; z-index:40;
+          background:#05050899; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px) }
+  #help.show { display:grid }
+  .help-panel { max-width:26em; padding:2em 2.4em; border-radius:16px; background:#121218f2;
+                border:1px solid #ffffff1a; box-shadow:0 20px 60px #000d }
+  .help-panel h3 { margin:0 0 .8em; letter-spacing:.25em; color:#9fffb0; font-size:.9em }
+  .help-panel p, .help-panel li { font-size:.85em; color:#bbb; line-height:1.6 }
+  .help-panel b { color:#fff }
+  .help-panel .key { color:#9fd0aa; font-weight:700 }
+  .help-close { margin-top:1.2em; text-align:center }
+
   #hud { position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between;
          align-items:flex-start; gap:1em; padding:.7em 1.4em 0; font-size:.85em;
          pointer-events:none; z-index:10 }
   .hud-cell { display:flex; flex-direction:column; gap:.1em; min-width:6.5em }
   .hud-mid { align-items:center; text-align:center }
   .hud-r { align-items:flex-end; text-align:right }
-  .hud-cell .lbl { font-size:.55em; letter-spacing:.35em; color:#555; font-weight:600 }
-  .hud-cell .val { font-size:1.7em; font-weight:800; color:#fff; letter-spacing:.06em;
+  .hud-cell .lbl { font-size:.7em; letter-spacing:.3em; color:#777; font-weight:600 }
+  .hud-cell .val { font-size:2.3em; font-weight:800; color:#fff; letter-spacing:.06em;
                    text-shadow:0 0 10px #ffffff33, 0 0 24px #ffb34744; font-variant-numeric:tabular-nums }
   .hud-r .val { color:#ffd76a; text-shadow:0 0 12px #ffb34766 }
-  .hud-mid .val { font-size:1em; color:#bbb; text-shadow:none; font-weight:700; letter-spacing:.15em }
+  .hud-mid .val { font-size:1.35em; color:#ccc; text-shadow:none; font-weight:700; letter-spacing:.15em }
   .val .retry { color:#ff6b6b; letter-spacing:.25em }
   #scoreval { display:inline-block }
   #scoreval.bump { animation:bump .18s cubic-bezier(.34,1.56,.64,1) }
@@ -100,29 +116,21 @@
   .pt { position:fixed; top:0; left:0; width:14px; height:14px; border-radius:50%;
         background:radial-gradient(circle at 35% 35%, #ffe9a8, #ffc94d 60%, #d99a1f);
         box-shadow:0 0 10px #ffc94dcc; pointer-events:none; z-index:30 }
-  #streakbadge { display:inline-block; color:#ffb25e; font-weight:700; letter-spacing:.08em;
-                 font-size:.8em }
-  #streakbadge { display:none } /* superseded by #combo */
-  /* Guitar Hero / Beat Saber style combo: big number, progress ring, tier glow */
-  #combo { position:fixed; top:14%; left:0; right:0; display:flex; align-items:center;
-           justify-content:center; gap:.5em; pointer-events:none; z-index:9 }
-  #combo .cring { display:block }
-  #combo .cnum { font-size:3em; font-weight:900; letter-spacing:.02em; line-height:1;
-                 display:inline-block }
-  #combo .clbl { font-size:.6em; letter-spacing:.3em; color:#888; font-weight:600 }
-  #combo .cstack { display:flex; flex-direction:column; align-items:flex-start; gap:.15em }
-  #combo .cnum.pop { animation:spop .3s cubic-bezier(.34,1.56,.64,1) }
-  /* tier colors: blue -> gold -> fire orange -> magenta blaze */
-  #combo[data-tier="0"] .cnum { color:#fff; text-shadow:0 0 18px #7ec8ff99 }
-  #combo[data-tier="0"] .cfill { stroke:#7ec8ff }
-  #combo[data-tier="1"] .cnum { color:#ffe9a8; text-shadow:0 0 22px #ffd76acc }
-  #combo[data-tier="1"] .cfill { stroke:#ffd76a }
-  #combo[data-tier="2"] .cnum { color:#ffc38a; text-shadow:0 0 26px #ff9d2edd }
-  #combo[data-tier="2"] .cfill { stroke:#ff9d2e }
-  #combo[data-tier="3"] .cnum { color:#ffc6ec; text-shadow:0 0 34px #ff5ec4ee, 0 0 60px #ff5ec488 }
-  #combo[data-tier="3"] .cfill { stroke:#ff5ec4; filter:drop-shadow(0 0 6px #ff5ec4) }
-  #combo .lost { color:#ff6b6b; font-weight:800; font-size:1.1em; letter-spacing:.15em;
-                 animation:slost 1.8s ease-out forwards }
+  /* streak as a line: bar under SCORE, fills toward streak 10, neon by tier */
+  .srow { display:flex; align-items:center; gap:.6em; margin-top:.25em }
+  .snum { font-weight:900; font-size:1.1em; min-width:1.2em; display:inline-block }
+  .snum.pop { animation:spop .3s cubic-bezier(.34,1.56,.64,1) }
+  .strack { width:7em; height:5px; border-radius:3px; background:#ffffff14; overflow:hidden }
+  .sfill { height:100%; border-radius:3px; transition:width .35s cubic-bezier(.2,1,.3,1) }
+  .smult { font-size:.65em; letter-spacing:.2em; color:#888; font-weight:600 }
+  .hud-cell[data-tier="0"] { --tier:#7ec8ff }
+  .hud-cell[data-tier="1"] { --tier:#ffd76a }
+  .hud-cell[data-tier="2"] { --tier:#ff9d2e }
+  .hud-cell[data-tier="3"] { --tier:#ff5ec4 }
+  .hud-cell[data-tier] .snum { color:#fff; text-shadow:0 0 12px var(--tier) }
+  .hud-cell[data-tier] .sfill { background:var(--tier); box-shadow:0 0 8px var(--tier) }
+  .lost { color:#ff6b6b; font-weight:800; font-size:.85em; letter-spacing:.15em;
+          animation:slost 1.8s ease-out forwards }
   #streakbadge em { font-style:normal; color:#f7d774 }
   #streakbadge.pop { animation:spop .3s cubic-bezier(.34,1.56,.64,1) }
   @keyframes spop { 40% { transform:scale(1.5) } }
@@ -138,8 +146,19 @@
 </head>
 <body>
 <div id="hud"></div>
-<div id="combo"></div>
 <div id="banner"></div>
+<button id="helpbtn" title="How to play [I]">i</button>
+<div id="help"><div class="help-panel">
+  <h3>HOW TO PLAY</h3>
+  <p>Two target chords play at the start — one panned <b>Left</b>, one <b>Right</b>.
+     Every note in the center column belongs to one of them. Sort by sound.</p>
+  <p><span class="key">A</span> hold = grab a note (it pulses) · move with
+     <span class="key">◀ ▶</span> · release = drop. <span class="key">B</span> = cancel grab.<br>
+     <span class="key">LT / RT</span> replay target chords · <span class="key">X Y B</span> audition columns.<br>
+     <span class="key">START</span> submit (center must be empty) · <span class="key">LB / RB</span> volume.</p>
+  <p>Fewer moves = more stars. Win streaks multiply your score, up to ×2 at streak 10.</p>
+  <p class="help-close meta">[I] or any button to close</p>
+</div></div>
 <div id="debug">Connect gamepad, press any button…</div>
 <script type="module" src="game.js"></script>
 </body>
