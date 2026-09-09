@@ -402,15 +402,11 @@ function render() {
     let rows = S.cols[k].map((m, i) => noteHtml(m, k, i));
     if (S.captured && S.cursor.col === k) rows.splice(S.cursor.row, 0, noteHtml(S.captured.midi, k, S.cursor.row));
     const invite = S.tut === 'grab' && S.everCaptured && !S.everPlaced && k !== 'C' ? 'invite' : '';
-    // lock-in seal: side notes fully match the target -> column glows green, live feedback
-    const done = k !== 'C' && S.targets && S.cols[k].length === S.targets[k].length &&
-      S.cols[k].every((m) => S.targets[k].includes(m)) ? 'done' : '';
-    return `<div class="col ${S.cursor.col === k ? 'active' : ''} ${invite} ${done}" data-col="${k}"><h3>${{ L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[k]}</h3>${rows.join('')}</div>`;
+    return `<div class="col ${S.cursor.col === k ? 'active' : ''} ${invite}" data-col="${k}"><h3>${{ L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[k]}</h3>${rows.join('')}</div>`;
   };
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
-  el.innerHTML = `
-    <div class="row${S.phase === 'intro' ? ' dealt' : ''}">${col('L')}${col('C')}${col('R')}</div>
-    ${controlsHtml()}`;
+  el.innerHTML = `<div class="row${S.phase === 'intro' ? ' dealt' : ''}">${col('L')}${col('C')}${col('R')}</div>`;
+  syncControls();
   clearTimeout(idleTimer);
   if (S.phase === 'play') idleTimer = setTimeout(render, 2100); // picks up the breathe cue
 
@@ -537,6 +533,16 @@ function controlsHtml() {
   return `<div class="ctl-groups ${S.level > 5 ? 'quiet' : ''}">${usePad ? padGroup : keyGroup}</div>`;
 }
 
+// controls cheat-sheet lives outside #debug so board rebuilds don't flash it;
+// only touched when the html actually changes
+let lastCtl = '';
+function syncControls() {
+  const h = controlsHtml();
+  if (h === lastCtl) return;
+  lastCtl = h;
+  document.getElementById('ctlwrap').innerHTML = h;
+}
+
 function renderTitle() {
   const fam = pad.info ? pad.info.family.toUpperCase() : null;
   document.getElementById('debug').innerHTML = `
@@ -544,8 +550,8 @@ function renderTitle() {
     <p class="meta">Hear the chords. Sort the notes. Left vs Right.</p>
     <p style="margin-top:2em;animation:glow 1.6s ease-in-out infinite">PRESS ANY BUTTON — STORY</p>
     <p class="meta">X&nbsp;=&nbsp;FREE PLAY (endless chords)</p>
-    <p class="meta">${fam ? fam + ' pad connected ✓' : 'Play with gamepad (Xbox · PlayStation · Switch Pro) or keyboard.'}</p>
-    ${controlsHtml()}`;
+    <p class="meta">${fam ? fam + ' pad connected ✓' : 'Play with gamepad (Xbox · PlayStation · Switch Pro) or keyboard.'}</p>`;
+  syncControls();
 }
 addEventListener('gamepadconnected', () => { if (S.phase === 'title') renderTitle(); });
 // held-button auto-repeat: 300ms initial delay, then 90ms steps (pad + keys)

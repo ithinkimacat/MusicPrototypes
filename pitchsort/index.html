@@ -25,9 +25,6 @@
          transition:border-color .2s }
   .col.active { border-color:#ffffff40 }
   .col.sounding { border-color:#fff }
-  /* lock-in: column's notes fully match its target -> soft green seal */
-  .col.done { border-color:#8fffa866; box-shadow:0 0 14px #8fffa81f; animation:doneseal 2.2s ease-in-out infinite }
-  @keyframes doneseal { 50% { box-shadow:0 0 22px #8fffa83a } }
   .col h3 { margin:0 0 .7em; font-size:.7em; font-weight:500; color:#555; letter-spacing:.25em }
 
   .note { display:block; width:2.6em; height:1.1em; margin:.5em auto; border-radius:6px;
@@ -49,7 +46,7 @@
   @keyframes shake { 20%,60% { transform:translateX(-4px) } 40%,80% { transform:translateX(4px) } }
 
   @media (prefers-reduced-motion: reduce) {
-    .row.shake, .note.attract, .col.invite, .kchip.pulse, .note.cursor.breathe, .col.done { animation:none }
+    .row.shake, .note.attract, .col.invite, .kchip.pulse, .note.cursor.breathe { animation:none }
     .row.dealt .note { animation-delay:0s; animation-duration:.15s }
     .win .note { animation-duration:.01s }
   }
@@ -180,6 +177,7 @@
   <p class="help-close meta">[I] or any button to close</p>
 </div></div>
 <div id="debug">Connect gamepad, press any button…</div>
+<div id="ctlwrap"></div>
 <script type="module" src="game.js"></script>
 </body>
 </html>
