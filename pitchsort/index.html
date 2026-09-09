@@ -106,7 +106,7 @@
 
   /* story map: wide winding strip of 10 spots/row (1-2 rows by free vertical space),
      green dot slides spot → spot. Frameless; in-flow grid row so it never overlaps */
-  #pathwrap { grid-row:1; justify-self:center; margin-top:.4em;
+  #pathwrap { grid-row:1; justify-self:center; margin-top:3.6em; /* clears the fixed HUD (LEVEL / MOVES cell) */
               width:min(60vw, 19em); pointer-events:none }
   #pathwrap:empty { display:none } /* title / free play: no frame, no gap */
   .wpath { display:block; width:100%; height:auto }
