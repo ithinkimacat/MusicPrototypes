@@ -90,7 +90,7 @@ function onButton(b) {
     start(S.titleMode === 'free'); return;
   }
   if (S.phase === 'graded') {
-    if (b === 'START') { S.levelPop = !!S.pass; loadLevel(S.pass ? S.level + 1 : S.level, !S.pass); }
+    if (b === 'START') loadLevel(S.pass ? S.level + 1 : S.level, !S.pass);
     return;
   }
   if (S.phase !== 'play') return;
@@ -152,7 +152,7 @@ function tickRelease(aHeld) {
     if (isPass()) { // auto-win: play feedback, then next level
       S.pass = true; grade();
       setTimeout(() => document.getElementById('debug').classList.add('fade'), 3600);
-      setTimeout(() => { S.levelPop = true; loadLevel(S.level + 1); }, 4000); // jingle + L/R chords + merge ≈ 4s
+      setTimeout(() => loadLevel(S.level + 1), 4000); // jingle + L/R chords + merge ≈ 4s
     }
   }
   aHeldPrev = aHeld;
@@ -554,21 +554,39 @@ function syncControls() {
   document.getElementById('ctlwrap').innerHTML = h;
 }
 
-// story progress path above the board: fill + sliding marker, ticks every 10 levels
-let lastPath = '';
+// story map above the board: winding serpentine of numbered spots (window of 24),
+// green dot slides spot → spot as the player clears levels. Free play: hidden.
+const PATH_POS = Array.from({ length: 24 }, (_, i) => {
+  const r = Math.floor(i / 6), c = i % 6, cc = r % 2 ? 5 - c : c; // serpentine
+  return [30 + cc * 40, 22 + r * 52];
+});
+const pathPath = 'M' + PATH_POS.map((p) => p.join(' ')).join(' L');
+let pathWin = null; // which 24-level window is drawn
 function syncPath() {
+  const wrap = document.getElementById('pathwrap');
   const total = campaignLength();
   const show = S.mode === 'story' && S.phase !== 'title' && total;
-  const h = show ? `<div class="path">
-      <div class="pfill" style="width:${(S.level / total) * 100}%"></div>
-      ${Array.from({ length: 9 }, (_, i) => `<span class="ptick ${S.level >= (i + 1) * 10 ? '' : 'next'}" style="left:${(i + 1) * 10}%"></span>`).join('')}
-      <div class="pmark ${S.levelPop ? 'leveled' : ''}" style="left:${((S.level - 1) / (total - 1)) * 100}%"></div>
-    </div>
-    <div class="plvl">LEVEL ${S.level} / ${total}</div>` : '';
-  if (h === lastPath) { S.levelPop = false; return; }
-  lastPath = h;
-  document.getElementById('pathwrap').innerHTML = h;
-  S.levelPop = false;
+  if (!show) { if (pathWin !== null) { wrap.innerHTML = ''; pathWin = null; } return; }
+  const win = Math.floor((S.level - 1) / 24);
+  if (win !== pathWin) {
+    pathWin = win;
+    const base = win * 24, n = Math.min(24, total - base);
+    wrap.innerHTML = `<svg class="wpath" viewBox="0 0 260 190">
+      <path d="${pathPath}" fill="none"/>
+      ${Array.from({ length: n }, (_, i) => {
+        const [x, y] = PATH_POS[i], lvl = base + i + 1;
+        return `<g class="wspot"><circle cx="${x}" cy="${y}" r="11"/><text x="${x}" y="${y + 3.5}">${lvl}</text></g>`;
+      }).join('')}
+      <circle class="wdot" r="7"/>
+    </svg>`;
+  }
+  const i = (S.level - 1) % 24;
+  wrap.querySelectorAll('.wspot').forEach((g, j) => {
+    g.classList.toggle('done', j < i);
+    g.classList.toggle('now', j === i);
+  });
+  const [x, y] = PATH_POS[i];
+  wrap.querySelector('.wdot').style.transform = `translate(${x}px,${y}px)`;
 }
 
 function renderTitle() {

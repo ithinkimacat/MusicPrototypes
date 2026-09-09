@@ -103,25 +103,23 @@
   #ctlwrap { position:fixed; inset:0; pointer-events:none } /* out of grid flow → board stays centered */
   #ctlwrap .ctl-groups { pointer-events:auto }
 
-  /* progress path: story-mode track above the board, marker slides level → level */
-  #pathwrap { position:fixed; top:5.8em; left:50%; transform:translateX(-50%);
-              width:min(62vw, 30em); z-index:9; text-align:center }
-  .path { position:relative; height:4px; border-radius:2px; background:#ffffff12 }
-  .pfill { position:absolute; left:0; top:0; bottom:0; border-radius:2px;
-           background:linear-gradient(90deg, #ffd76a66, #ff9d2e);
-           transition:width .6s cubic-bezier(.2,1,.3,1) }
-  .ptick { position:absolute; top:-2px; width:2px; height:8px; background:#ffffff1c }
-  .ptick.next { background:#ffd76a66 }
-  .pmark { position:absolute; top:-5px; width:14px; height:14px; margin-left:-7px; border-radius:50%;
-           background:radial-gradient(circle at 35% 35%, #ffe9a8, #ffc94d 60%, #d99a1f);
-           box-shadow:0 0 12px #ffc94dee;
-           transition:left .6s cubic-bezier(.34,1.4,.64,1); animation:ppulse 1.6s ease-in-out infinite }
-  .pmark.leveled { animation:ppop .5s cubic-bezier(.34,1.56,.64,1) }
-  @keyframes ppulse { 50% { box-shadow:0 0 20px #ffd76a; transform:scale(1.15) } }
-  @keyframes ppop { 40% { transform:scale(1.8) } }
-  .plvl { margin-top:.7em; font-size:.7em; letter-spacing:.25em; color:#cbb26b }
-  @media (prefers-reduced-motion: reduce) { .pmark { animation:none } }
-  @media (max-width: 720px), (max-height: 560px) { #pathwrap { top:4.6em } }
+  /* story map: winding serpentine of level spots, green dot slides down it (~24 visible) */
+  #pathwrap { position:fixed; top:4.6em; left:50%; transform:translateX(-50%);
+              width:min(52vw, 22em); z-index:9; pointer-events:none }
+  .wpath { display:block; width:100%; height:auto }
+  .wpath path { stroke:#ffffff1c; stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round }
+  .wspot circle { fill:#1a1a22; stroke:#ffffff2a; stroke-width:1 }
+  .wspot text { fill:#8a8a96; font-size:9px; text-anchor:middle; font-family:inherit }
+  .wspot.done circle { fill:#ffc94d22; stroke:#ffd76a }
+  .wspot.done text { fill:#ffd76a }
+  .wspot.now circle { fill:#8fffa8; stroke:#d6ffde; filter:drop-shadow(0 0 6px #9fffb0cc) }
+  .wspot.now text { fill:#052; font-weight:700 }
+  .wdot { fill:#7cfc9e; stroke:#052; stroke-width:1.5;
+          filter:drop-shadow(0 0 8px #7cfc9ecc);
+          transition:transform .55s cubic-bezier(.34,1.4,.64,1); animation:wdotpulse 1.6s ease-in-out infinite }
+  @keyframes wdotpulse { 50% { filter:drop-shadow(0 0 14px #a4ffb8) } }
+  @media (prefers-reduced-motion: reduce) { .wdot { animation:none; transition:none } }
+  @media (max-width: 720px), (max-height: 560px) { #pathwrap { top:3.8em; width:min(48vw, 16em) } }
 
   /* title mode toggle: STORY | FREE */
   .tmodes { display:flex; gap:.8em; justify-content:center; margin:1.2em 0 0 }
