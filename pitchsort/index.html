@@ -25,6 +25,9 @@
          transition:border-color .2s }
   .col.active { border-color:#ffffff40 }
   .col.sounding { border-color:#fff }
+  /* lock-in: column's notes fully match its target -> soft green seal */
+  .col.done { border-color:#8fffa866; box-shadow:0 0 14px #8fffa81f; animation:doneseal 2.2s ease-in-out infinite }
+  @keyframes doneseal { 50% { box-shadow:0 0 22px #8fffa83a } }
   .col h3 { margin:0 0 .7em; font-size:.7em; font-weight:500; color:#555; letter-spacing:.25em }
 
   .note { display:block; width:2.6em; height:1.1em; margin:.5em auto; border-radius:6px;
@@ -46,7 +49,8 @@
   @keyframes shake { 20%,60% { transform:translateX(-4px) } 40%,80% { transform:translateX(4px) } }
 
   @media (prefers-reduced-motion: reduce) {
-    .row.shake, .note.attract, .col.invite, .kchip.pulse { animation:none }
+    .row.shake, .note.attract, .col.invite, .kchip.pulse, .note.cursor.breathe, .col.done { animation:none }
+    .row.dealt .note { animation-delay:0s; animation-duration:.15s }
     .win .note { animation-duration:.01s }
   }
 
@@ -69,6 +73,15 @@
   @keyframes invite { 50% { border-color:#9fd0aa; box-shadow:0 0 14px #9fd0aa33 } }
   .kchip.pulse { animation:chippulse 1s ease-in-out infinite; border-color:#9fd0aa; color:#cfffd9 }
   @keyframes chippulse { 50% { transform:translateY(-2px); box-shadow:0 3px 10px #9fd0aa44 } }
+  /* deal-in cascade: center notes drop in one by one at level start */
+  .row.dealt .note { animation:dealin .32s cubic-bezier(.2,.9,.3,1) both; animation-delay:calc(var(--i) * 90ms) }
+  @keyframes dealin { from { opacity:0; transform:translateY(-12px) scale(.75) } }
+  /* cursor breathes after 2s idle — wordless "your move" cue */
+  .note.cursor.breathe { animation:breathe 1.4s ease-in-out infinite }
+  @keyframes breathe { 50% { filter:brightness(1.55) } }
+  /* controls cheat-sheet recedes once the player knows the game */
+  .ctl-groups { transition:opacity .5s }
+  .ctl-groups.quiet { opacity:.15 }
 
   #banner { position:fixed; top:0; right:0; bottom:0; left:0; /* inset:0 */ inset:0;
             display:grid; place-items:center; pointer-events:none; z-index:20 }
@@ -115,7 +128,8 @@
   @keyframes bump { 50% { transform:scale(1.22); color:#ffe9a8 } }
   .pt { position:fixed; top:0; left:0; width:14px; height:14px; border-radius:50%;
         background:radial-gradient(circle at 35% 35%, #ffe9a8, #ffc94d 60%, #d99a1f);
-        box-shadow:0 0 10px #ffc94dcc; pointer-events:none; z-index:30 }
+        box-shadow:0 0 10px #ffc94dcc, -16px 16px 10px -4px #ffc94d4d; /* motion trail */
+        pointer-events:none; z-index:30 }
   /* streak as a line: bar under SCORE, fills toward streak 10, neon by tier */
   .srow { display:flex; align-items:center; gap:.6em; margin-top:.25em }
   .snum { font-weight:900; font-size:1.1em; min-width:1.2em; display:inline-block }

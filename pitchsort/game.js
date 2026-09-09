@@ -16,6 +16,7 @@ const S = {
   targets: null,
   moves: 0,
   t0: 0,
+  lastInput: 0, // for the cursor idle-breathe cue
   score: 0,
   streak: 0,
   best: Number(localStorage.getItem('ps-best') ?? 0),
@@ -89,6 +90,7 @@ function onButton(b) {
     return;
   }
   if (S.phase !== 'play') return;
+  S.lastInput = performance.now();
 
   switch (b) {
     case 'LEFT': case 'RIGHT': {
@@ -140,6 +142,7 @@ function tickRelease(aHeld) {
     colArr().splice(S.cursor.row, 0, S.captured.midi);
     S.captured = null;
     S.everPlaced = true;
+    S.lastInput = performance.now();
     pad.rumble(0.4, 0.3, 110);
     hearCursor(); render();
     if (isPass()) { // auto-win: play feedback, then next level
@@ -352,14 +355,18 @@ function combineStacks() {
 // pitch → hue: blue (low) through green/yellow to red (high)
 const midiColor = (m) => `hsl(${240 - ((m - 45) / 31) * 240}, 90%, 55%)`;
 
+let IDLE = false, idleTimer = 0;
 function noteHtml(m, k, i) {
+  const isCur = S.cursor.col === k && S.cursor.row === i && !S.captured;
   const cls = [
     'note',
-    S.cursor.col === k && S.cursor.row === i && !S.captured ? 'cursor' : '',
+    isCur ? 'cursor' : '',
+    isCur && IDLE ? 'breathe' : '', // wordless "your move" after 2s idle
     S.captured?.midi === m ? 'captured' : '',
     S.tut === 'grab' && !S.everCaptured && k === 'C' ? 'attract' : '', // L1: note breathes until grabbed
   ].join(' ');
-  return `<span class="${cls}" data-midi="${m}" style="background:${midiColor(m)}"></span>`;
+  const style = `background:${midiColor(m)}${k === 'C' && S.phase === 'intro' ? `;--i:${i}` : ''}`;
+  return `<span class="${cls}" data-midi="${m}" style="${style}"></span>`;
 }
 
 function render() {
@@ -388,16 +395,22 @@ function render() {
   const before = {};
   el.querySelectorAll('.note[data-midi]').forEach((n) => { before[n.dataset.midi] = n.getBoundingClientRect(); });
 
+  IDLE = S.phase === 'play' && performance.now() - S.lastInput > 2000;
   const col = (k) => {
     let rows = S.cols[k].map((m, i) => noteHtml(m, k, i));
     if (S.captured && S.cursor.col === k) rows.splice(S.cursor.row, 0, noteHtml(S.captured.midi, k, S.cursor.row));
     const invite = S.tut === 'grab' && S.everCaptured && !S.everPlaced && k !== 'C' ? 'invite' : '';
-    return `<div class="col ${S.cursor.col === k ? 'active' : ''} ${invite}" data-col="${k}"><h3>${{ L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[k]}</h3>${rows.join('')}</div>`;
+    // lock-in seal: side notes fully match the target -> column glows green, live feedback
+    const done = k !== 'C' && S.targets && S.cols[k].length === S.targets[k].length &&
+      S.cols[k].every((m) => S.targets[k].includes(m)) ? 'done' : '';
+    return `<div class="col ${S.cursor.col === k ? 'active' : ''} ${invite} ${done}" data-col="${k}"><h3>${{ L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[k]}</h3>${rows.join('')}</div>`;
   };
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `
-    <div class="row">${col('L')}${col('C')}${col('R')}</div>
+    <div class="row${S.phase === 'intro' ? ' dealt' : ''}">${col('L')}${col('C')}${col('R')}</div>
     ${controlsHtml()}`;
+  clearTimeout(idleTimer);
+  if (S.phase === 'play') idleTimer = setTimeout(render, 2100); // picks up the breathe cue
 
   el.querySelectorAll('.note[data-midi]').forEach((n) => {
     const b = before[n.dataset.midi];
@@ -474,7 +487,7 @@ function controlsHtml() {
   const n = (pad.info ?? detectFamily()).names;
   const k = (label, action, tutKey) => `<span class="ctl"><b class="kchip ${S.tut === tutKey && S.phase === 'play' ? 'pulse' : ''}">${label}</b>${action}</span>`;
   const bumpers = pad.info?.family === 'ps' ? 'L1/R1' : 'LB/RB';
-  return `<div class="ctl-groups">
+  return `<div class="ctl-groups ${S.level > 5 ? 'quiet' : ''}">
     <div class="ctl-group ${pad.info ? '' : 'dim'}">
       <div class="ctl-head">${ICON_PAD} <span>gamepad${pad.info ? ' · ' + pad.info.family.toUpperCase() : ''}</span></div>
       <div class="controls">
