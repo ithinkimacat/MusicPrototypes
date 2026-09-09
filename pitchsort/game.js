@@ -554,38 +554,43 @@ function syncControls() {
   document.getElementById('ctlwrap').innerHTML = h;
 }
 
-// story map above the board: winding serpentine of numbered spots (window of 24),
-// green dot slides spot → spot as the player clears levels. Free play: hidden.
-const PATH_POS = Array.from({ length: 24 }, (_, i) => {
-  const r = Math.floor(i / 6), c = i % 6, cc = r % 2 ? 5 - c : c; // serpentine
-  return [30 + cc * 40, 22 + r * 52];
-});
-const pathPath = 'M' + PATH_POS.map((p) => p.join(' ')).join(' L');
-let pathWin = null; // which 24-level window is drawn
+// story map above the board: wide serpentine, 10 spots per row; row count scales with
+// free vertical space (tall viewports get 2 rows, short get 1). Free play: hidden.
+const pathGeo = (rows) => { // rows of 10, serpentine
+  const pos = Array.from({ length: rows * 10 }, (_, i) => {
+    const r = Math.floor(i / 10), c = i % 10, cc = r % 2 ? 9 - c : c;
+    return [16 + cc * 26, 16 + r * 30];
+  });
+  return { pos, d: 'M' + pos.map((p) => p.join(' ')).join(' L'), w: 16 * 2 + 26 * 9, h: 16 * 2 + 30 * (rows - 1) };
+};
+let pathKey = null; // which window+rows layout is drawn
 function syncPath() {
   const wrap = document.getElementById('pathwrap');
   const total = campaignLength();
   const show = S.mode === 'story' && S.phase !== 'title' && total;
-  if (!show) { if (pathWin !== null) { wrap.innerHTML = ''; pathWin = null; } return; }
-  const win = Math.floor((S.level - 1) / 24);
-  if (win !== pathWin) {
-    pathWin = win;
-    const base = win * 24, n = Math.min(24, total - base);
-    wrap.innerHTML = `<svg class="wpath" viewBox="0 0 260 190">
-      <path d="${pathPath}" fill="none"/>
+  if (!show) { if (pathKey !== null) { wrap.innerHTML = ''; pathKey = null; } return; }
+  const rows = innerHeight >= 700 && innerWidth >= 560 ? 2 : 1;
+  const span = rows * 10;
+  const win = Math.floor((S.level - 1) / span);
+  const key = `${win}:${rows}`;
+  if (key !== pathKey) {
+    pathKey = key;
+    const g = pathGeo(rows), base = win * span, n = Math.min(span, total - base);
+    wrap.innerHTML = `<svg class="wpath" viewBox="0 0 ${g.w} ${g.h}">
+      <path d="${g.d}" fill="none"/>
       ${Array.from({ length: n }, (_, i) => {
-        const [x, y] = PATH_POS[i], lvl = base + i + 1;
-        return `<g class="wspot"><circle cx="${x}" cy="${y}" r="11"/><text x="${x}" y="${y + 3.5}">${lvl}</text></g>`;
+        const [x, y] = g.pos[i], lvl = base + i + 1;
+        return `<g class="wspot"><circle cx="${x}" cy="${y}" r="11"/><text x="${x}" y="${y + 4}">${lvl}</text></g>`;
       }).join('')}
       <circle class="wdot" r="7"/>
     </svg>`;
   }
-  const i = (S.level - 1) % 24;
+  const i = (S.level - 1) % span;
   wrap.querySelectorAll('.wspot').forEach((g, j) => {
     g.classList.toggle('done', j < i);
     g.classList.toggle('now', j === i);
   });
-  const [x, y] = PATH_POS[i];
+  const [x, y] = pathGeo(rows).pos[i];
   wrap.querySelector('.wdot').style.transform = `translate(${x}px,${y}px)`;
 }
 
@@ -605,6 +610,7 @@ function renderTitle() {
   syncControls();
 }
 addEventListener('gamepadconnected', () => { if (S.phase === 'title') renderTitle(); });
+addEventListener('resize', () => { pathKey = null; if (S.phase !== 'title') render(); }); // map row count depends on viewport
 // held-button auto-repeat: 300ms initial delay, then 90ms steps (pad + keys)
 const repeat = { UP: 0, DOWN: 0, LEFT: 0, RIGHT: 0 };
 let titlePadShown = false;
