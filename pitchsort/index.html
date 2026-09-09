@@ -5,7 +5,7 @@
   :root { --fs: 15px }
   body { background:#0b0b0f; color:#e8e8ee; font:var(--fs)/1.5 ui-monospace, monospace; margin:0;
          display:grid; grid-template-rows:auto 1fr; place-items:center; min-height:100vh }
-  #debug { grid-row:2; align-self:center }
+  #debug { grid-row:2; align-self:center; justify-self:center }
   /* small-screen hardware: scale the whole board, controls cheat-sheet no longer fits */
   @media (max-width: 720px), (max-height: 560px) {
     :root { --fs: clamp(9px, 2.8vmin, 15px) }
@@ -106,8 +106,8 @@
 
   /* story map: wide winding strip of 10 spots/row (1-2 rows by free vertical space),
      green dot slides spot → spot. Frameless; in-flow grid row so it never overlaps */
-  #pathwrap { grid-row:1; justify-self:center; margin-top:3.6em; /* clears the fixed HUD (LEVEL / MOVES cell) */
-              width:min(60vw, 19em); pointer-events:none }
+  #pathwrap { grid-row:1; justify-self:center; margin-top:4.4em; /* clears the fixed HUD (LEVEL / MOVES cell) */
+              width:min(48vw, 15em); pointer-events:none }
   #pathwrap:empty { display:none } /* title / free play: no frame, no gap */
   .wpath { display:block; width:100%; height:auto }
   .wpath path { stroke:#ffffff30; stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round }
