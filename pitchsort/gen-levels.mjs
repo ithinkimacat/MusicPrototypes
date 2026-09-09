@@ -16,10 +16,11 @@ const ROWS = [
   // --- singles: learn the mechanic, intervals far apart ---
   ['C: I | V', 'grab', [60], [67]],
   ['G: I | V', 'triggers', [67], [74]],
-  ['F: I | V', 'play', [65], [72]],
-  ['D: I | V', , [62], [69]],
-  ['Bb: I | V', , [58], [65]],
-  ['E: I | V', , [64], [71]],
+  // octave pairs: sound nearly identical — first real ear test from level 3
+  ['C: 8va pair', 'play', [60], [72]],
+  ['E: 8va pair', , [64], [76]],
+  ['F: 8va pair', , [65], [77]],
+  ['G: 8va pair', , [67], [79]],
 
   // --- 2-note combos (11): dyads, thirds/fifths, registers pulling closer ---
   ['C: I | V', , [60, 64], [67, 71]],
@@ -81,9 +82,21 @@ const levels = ROWS.map(([name, hint, L, R], i) => {
     if (m < 48 || m > 84) throw new Error(`L${n} ${name}: midi ${m} out of band 48-84`);
     if (!set.add(m)) throw new Error(`L${n} ${name}: note ${m} duplicated — unsolvable`);
   }
-  const pool = L.flatMap((m, k) => [m, R[k]]); // deterministic interleave L,R
+  // seeded shuffle: same pool order for every player, but no LRLR alternation giveaway
+  const pool = seededShuffle([...L, ...R], n);
   return { n, name, ...(hint ? { hint } : {}), L, R, pool };
 });
+
+function seededShuffle(arr, seed) {
+  let s = seed * 2654435761 % 4294967296; // deterministic per level
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) % 4294967296;
+    const j = Math.floor((s / 4294967296) * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 // size ramp check
 const seq = levels.map((l) => l.L.length).join('');
