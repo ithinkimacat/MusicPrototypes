@@ -103,9 +103,13 @@
   #ctlwrap { position:fixed; inset:0; pointer-events:none } /* out of grid flow → board stays centered */
   #ctlwrap .ctl-groups { pointer-events:auto }
 
-  /* story map: winding serpentine of level spots, green dot slides down it (~24 visible) */
-  #pathwrap { position:fixed; top:4.6em; left:50%; transform:translateX(-50%);
-              width:min(52vw, 22em); z-index:9; pointer-events:none }
+  /* story map: winding serpentine of level spots, green dot slides down it (~24 visible).
+     In-flow grid item above the board in its own frame — never overlaps the playfield */
+  #pathwrap { grid-row:1; justify-self:center; margin-top:4.2em;
+              width:min(38vw, 11em); pointer-events:none;
+              background:#12121a; border:1px solid #ffffff1a; border-radius:12px;
+              padding:.5em .9em; box-shadow:0 6px 24px #0008 }
+  #pathwrap:empty { display:none } /* title / free play: no frame, no gap */
   .wpath { display:block; width:100%; height:auto }
   .wpath path { stroke:#ffffff1c; stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round }
   .wspot circle { fill:#1a1a22; stroke:#ffffff2a; stroke-width:1 }
@@ -119,7 +123,7 @@
           transition:transform .55s cubic-bezier(.34,1.4,.64,1); animation:wdotpulse 1.6s ease-in-out infinite }
   @keyframes wdotpulse { 50% { filter:drop-shadow(0 0 14px #a4ffb8) } }
   @media (prefers-reduced-motion: reduce) { .wdot { animation:none; transition:none } }
-  @media (max-width: 720px), (max-height: 560px) { #pathwrap { top:3.8em; width:min(48vw, 16em) } }
+  @media (max-width: 720px), (max-height: 560px) { #pathwrap { width:min(42vw, 9em); margin-top:3.6em } }
 
   /* title mode toggle: STORY | FREE */
   .tmodes { display:flex; gap:.8em; justify-content:center; margin:1.2em 0 0 }
