@@ -58,7 +58,8 @@
 
   .controls { display:flex; flex-wrap:wrap; gap:.4em 1.2em; justify-content:center;
               max-width:44em; margin:.6em auto 0 }
-  .ctl-groups { display:flex; gap:2.5em; justify-content:center; align-items:flex-start; margin-top:1.4em }
+  .ctl-groups { display:flex; gap:2.5em; justify-content:center; align-items:flex-start;
+                position:fixed; left:50%; transform:translateX(-50%); bottom:4.5em }
   .ctl-group { transition:opacity .3s }
   .ctl-group.dim { opacity:.35 }
   .ctl-head { display:flex; align-items:center; gap:.6em; justify-content:center; color:#888;
@@ -144,6 +145,8 @@
   .hud-cell[data-tier="3"] { --tier:#ff5ec4 }
   .hud-cell[data-tier] .snum { color:#fff; text-shadow:0 0 12px var(--tier) }
   .hud-cell[data-tier] .sfill { background:var(--tier); box-shadow:0 0 8px var(--tier) }
+  .ember { position:fixed; width:5px; height:5px; border-radius:50%; z-index:29; pointer-events:none;
+           background:radial-gradient(circle, #ffe9a8, #ff9d2e 55%, #ff5e3a) }
   .lost { color:#ff6b6b; font-weight:800; font-size:.85em; letter-spacing:.15em;
           animation:slost 1.8s ease-out forwards }
   #streakbadge em { font-style:normal; color:#f7d774 }

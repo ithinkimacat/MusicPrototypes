@@ -380,7 +380,7 @@ function render() {
   // streak as a line under SCORE (GH-style): bar fills toward streak 10, neon by tier
   const tier = S.streak < 3 ? 0 : S.streak < 5 ? 1 : S.streak < 10 ? 2 : 3;
   const streakRow = S.streak >= 1
-    ? `<div class="srow"><span class="snum ${S.streakPop ? 'pop' : ''}">${S.streak}</span>
+    ? `<div class="srow"><span class="snum ${S.streakPop ? 'pop' : ''}" style="font-size:${1.1 + Math.min(10, S.streak) * 0.1}em">${S.streak}</span>
        <span class="strack"><span class="sfill" style="display:block;width:${Math.min(1, S.streak / 10) * 100}%"></span></span>
        <span class="smult">×${mult}</span></div>`
     : S.streakLost ? `<div class="srow"><span class="lost">✕ STREAK ${S.streakLost} LOST</span></div>` : '';
@@ -390,6 +390,8 @@ function render() {
     <div class="hud-cell hud-mid"><span class="lbl">${midLbl}</span><span class="val">${midVal}</span></div>
     <div class="hud-cell hud-r"><span class="lbl">HI-SCORE</span><span class="val">${S.best}</span></div>`;
   S.streakPop = false;
+  // hot streak (>=8 of 10): embers rise off the streak bar
+  if (S.streak >= 8) startEmbers(); else stopEmbers();
   document.getElementById('help').classList.toggle('show', !!S.help);
   // FLIP: snapshot block positions before rebuild, animate deltas after
   const before = {};
@@ -425,6 +427,30 @@ function render() {
 }
 
 const pad = new Pad(onButton);
+
+// embers off the streak number while it's hot (>=8 of 10); spawned on an interval,
+// each particle rises + fades then self-removes
+let emberIv = 0;
+function startEmbers() {
+  if (emberIv || REDUCED) return;
+  emberIv = setInterval(() => {
+    const n = document.querySelector('#hud .snum');
+    if (!n || S.streak < 8) { stopEmbers(); return; }
+    const r = n.getBoundingClientRect();
+    const e = document.createElement('div');
+    e.className = 'ember';
+    e.style.left = r.left + Math.random() * r.width + 'px';
+    e.style.top = r.bottom - 4 + 'px';
+    document.body.appendChild(e);
+    const dx = (Math.random() - 0.5) * 30;
+    e.animate(
+      [{ transform: 'translateY(0) scale(1)', opacity: 0.9 },
+       { transform: `translate(${dx}px,-${34 + Math.random() * 26}px) scale(0.2)`, opacity: 0 }],
+      { duration: 700 + Math.random() * 400, easing: 'ease-out' }
+    ).onfinish = () => e.remove();
+  }, S.streak >= 10 ? 90 : 160); // full streak burns denser
+}
+function stopEmbers() { clearInterval(emberIv); emberIv = 0; }
 
 const campaignP = loadCampaign(); // prefetch while the title screen waits for input
 let bootOnce = false;
@@ -491,23 +517,24 @@ function controlsHtml() {
   const n = (pad.info ?? detectFamily()).names;
   const k = (label, action, tutKey) => `<span class="ctl"><b class="kchip ${S.tut === tutKey && S.phase === 'play' ? 'pulse' : ''}">${label}</b>${action}</span>`;
   const bumpers = pad.info?.family === 'ps' ? 'L1/R1' : 'LB/RB';
-  return `<div class="ctl-groups ${S.level > 5 ? 'quiet' : ''}">
-    <div class="ctl-group ${pad.info ? '' : 'dim'}">
-      <div class="ctl-head">${ICON_PAD} <span>gamepad${pad.info ? ' · ' + pad.info.family.toUpperCase() : ''}</span></div>
-      <div class="controls">
-        ${k('◀▲▼▶', 'move')} ${k(n.bottom, 'hold = grab, release = drop', 'grab')} ${k(n.left, 'play Left', 'play')} ${k(n.right, 'play Right', 'play')}
-        ${k(n.top, 'play Center', 'play')} ${k(n.lt, 'target L', 'triggers')} ${k(n.rt, 'target R', 'triggers')} ${k(bumpers, 'volume')}
-      </div>
-    </div>
-    <div class="ctl-group ${keyUsed || !pad.info ? '' : 'dim'}">
-      <div class="ctl-head">${ICON_KEY} <span>keyboard</span></div>
-      <div class="controls">
-        ${k('WASD / ←↑↓→', 'move')} ${k('Space', 'hold = grab, release = drop', 'grab')} ${k('Esc', 'cancel grab')}
-        ${k('J', 'play Left', 'play')} ${k('K', 'play Center', 'play')} ${k('L', 'play Right', 'play')}
-        ${k('Q', 'target L', 'triggers')} ${k('E', 'target R', 'triggers')} ${k('- =', 'volume')}
-      </div>
+  const padGroup = `<div class="ctl-group">
+    <div class="ctl-head">${ICON_PAD} <span>gamepad${pad.info ? ' · ' + pad.info.family.toUpperCase() : ''}</span></div>
+    <div class="controls">
+      ${k('◀▲▼▶', 'move')} ${k(n.bottom, 'hold = grab, release = drop', 'grab')} ${k(n.left, 'play Left', 'play')} ${k(n.right, 'play Right', 'play')}
+      ${k(n.top, 'play Center', 'play')} ${k(n.lt, 'target L', 'triggers')} ${k(n.rt, 'target R', 'triggers')} ${k(bumpers, 'volume')}
     </div>
   </div>`;
+  const keyGroup = `<div class="ctl-group">
+    <div class="ctl-head">${ICON_KEY} <span>keyboard</span></div>
+    <div class="controls">
+      ${k('WASD / ←↑↓→', 'move')} ${k('Space', 'hold = grab, release = drop', 'grab')} ${k('Esc', 'cancel grab')}
+      ${k('J', 'play Left', 'play')} ${k('K', 'play Center', 'play')} ${k('L', 'play Right', 'play')}
+      ${k('Q', 'target L', 'triggers')} ${k('E', 'target R', 'triggers')} ${k('- =', 'volume')}
+    </div>
+  </div>`;
+  // show only the setup in use: pad wins once connected, keys when keyboard touched and no pad
+  const usePad = !!pad.info && !keyUsed;
+  return `<div class="ctl-groups ${S.level > 5 ? 'quiet' : ''}">${usePad ? padGroup : keyGroup}</div>`;
 }
 
 function renderTitle() {
