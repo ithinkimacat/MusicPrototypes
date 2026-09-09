@@ -241,9 +241,10 @@ function grade() {
     // stars: perfect efficiency = 3, each extra 25% over optimal costs half a star, floor 1
     const over = (S.moves - S.optimal) / S.optimal;
     S.stars = over <= 0 ? 3 : over <= 0.25 ? 2.5 : over <= 0.5 ? 2 : over <= 0.75 ? 1.5 : 1;
+    // streak = proficiency, not attendance: 3★ -> +1 · 2-2.5★ -> hold · 1-1.5★ -> -1
+    if (S.stars >= 3) { S.streak++; S.streakPop = true; }
+    else if (S.stars <= 1.5) S.streak = Math.max(0, S.streak - 1);
     // score: level base + efficiency bonus, compounding streak multiplier (cap 2x)
-    S.streak++;
-    S.streakPop = true; // badge scale-pop on next render
     const mult = Math.min(2, 1 + S.streak * 0.1);
     S.pts = Math.round((100 * S.level + 50 * S.stars) * mult);
     S.score += S.pts;
@@ -368,6 +369,7 @@ function render() {
   const midVal = S.phase === 'graded'
     ? (S.pass ? starHtml(S.stars) : '<span class="retry">✗ RETRY — START</span>')
     : `MOVES ${S.moves}/${S.optimal}`;
+  const midLbl = S.justCompleted ? 'STORY COMPLETE! · FREE' : `${S.mode === 'free' ? 'FREE' : 'LEVEL'} ${S.level}`;
   // streak as a line under SCORE (GH-style): bar fills toward streak 10, neon by tier
   const tier = S.streak < 3 ? 0 : S.streak < 5 ? 1 : S.streak < 10 ? 2 : 3;
   const streakRow = S.streak >= 1
@@ -378,7 +380,7 @@ function render() {
   document.getElementById('hud').innerHTML = `
     <div class="hud-cell" data-tier="${S.streak >= 1 ? tier : ''}"><span class="lbl">SCORE</span>
       <span class="val" id="scoreval">${S.dispScore ?? S.score}</span>${streakRow}</div>
-    <div class="hud-cell hud-mid"><span class="lbl">${S.mode === 'free' ? 'FREE' : 'LEVEL'} ${S.level}</span><span class="val">${midVal}</span></div>
+    <div class="hud-cell hud-mid"><span class="lbl">${midLbl}</span><span class="val">${midVal}</span></div>
     <div class="hud-cell hud-r"><span class="lbl">HI-SCORE</span><span class="val">${S.best}</span></div>`;
   S.streakPop = false;
   document.getElementById('help').classList.toggle('show', !!S.help);
@@ -394,7 +396,6 @@ function render() {
   };
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `
-    <h2 class="${S.phase === 'graded' && S.pass ? 'win' : ''}">${S.justCompleted ? 'STORY COMPLETE! — FREE PLAY' : `PitchSort${S.mode === 'free' ? ' · FREE' : ''}`}</h2>
     <div class="row">${col('L')}${col('C')}${col('R')}</div>
     ${controlsHtml()}`;
 
