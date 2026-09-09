@@ -608,8 +608,10 @@ function syncPath() {
     </svg>`;
   }
   const i = (S.level - 1) % span;
+  const base = win * span;
   wrap.querySelectorAll('.wspot').forEach((g, j) => {
-    g.classList.toggle('done', j < i);
+    const lvl = base + j + 1;
+    g.classList.toggle('done', lvl < S.level);
     g.classList.toggle('now', j === i);
   });
   const [x, y] = pathGeo(rows).pos[i];
