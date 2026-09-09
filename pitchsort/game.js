@@ -9,6 +9,7 @@ const PANFOR = { L: -0.8, C: 0, R: 0.8 };
 const S = {
   phase: 'intro', // intro | play | graded
   mode: 'story', // story = curated levels.json (fixed for everyone); free = endless generated 3-4/side
+  titleMode: 'story', // title-screen toggle selection
   level: 1,
   cols: { L: [], C: [], R: [] },
   cursor: { col: 'C', row: 0 },
@@ -84,9 +85,12 @@ function isPass() {
 
 function onButton(b) {
   if (S.help) { S.help = false; render(); return; } // any button dismisses the guide
-  if (S.phase === 'title') { start(b === 'X'); return; } // X = free play picker on the title
+  if (S.phase === 'title') {
+    if (b === 'LEFT' || b === 'RIGHT') { S.titleMode = S.titleMode === 'story' ? 'free' : 'story'; renderTitle(); return; }
+    start(S.titleMode === 'free'); return;
+  }
   if (S.phase === 'graded') {
-    if (b === 'START') loadLevel(S.pass ? S.level + 1 : S.level, !S.pass);
+    if (b === 'START') { S.levelPop = !!S.pass; loadLevel(S.pass ? S.level + 1 : S.level, !S.pass); }
     return;
   }
   if (S.phase !== 'play') return;
@@ -148,7 +152,7 @@ function tickRelease(aHeld) {
     if (isPass()) { // auto-win: play feedback, then next level
       S.pass = true; grade();
       setTimeout(() => document.getElementById('debug').classList.add('fade'), 3600);
-      setTimeout(() => loadLevel(S.level + 1), 4000); // jingle + L/R chords + merge ≈ 4s
+      setTimeout(() => { S.levelPop = true; loadLevel(S.level + 1); }, 4000); // jingle + L/R chords + merge ≈ 4s
     }
   }
   aHeldPrev = aHeld;
@@ -408,6 +412,7 @@ function render() {
   el.className = S.phase === 'graded' && S.pass ? 'win' : '';
   el.innerHTML = `<div class="row${S.phase === 'intro' ? ' dealt' : ''}">${col('L')}${col('C')}${col('R')}</div>`;
   syncControls();
+  syncPath();
   clearTimeout(idleTimer);
   if (S.phase === 'play') idleTimer = setTimeout(render, 2100); // picks up the breathe cue
 
@@ -470,7 +475,12 @@ addEventListener('keydown', (e) => {
   if (k === 'i') { S.help = !S.help; render(); return; }
   if (k === 'f') { toggleFs(); return; }
   if (S.help) { S.help = false; render(); return; } // any key dismisses the guide
-  if (S.phase === 'title') { start(k === 'j' || k === 'x'); return; } // J/X = free play
+  if (S.phase === 'title') {
+    if (k === 'arrowleft' || k === 'arrowright' || k === 'a' || k === 'd') {
+      S.titleMode = S.titleMode === 'story' ? 'free' : 'story'; renderTitle(); return;
+    }
+    start(S.titleMode === 'free'); return;
+  }
   if (k === ' ') { if (!keyHeld.space) { keyHeld.space = true; onButton('A'); } return; }
   if (k === '-') { setVolume(getVolume() - 0.1); render(); return; }
   if (k === '=') { setVolume(getVolume() + 0.1); render(); return; }
@@ -544,14 +554,36 @@ function syncControls() {
   document.getElementById('ctlwrap').innerHTML = h;
 }
 
+// story progress path above the board: fill + sliding marker, ticks every 10 levels
+let lastPath = '';
+function syncPath() {
+  const total = campaignLength();
+  const show = S.mode === 'story' && S.phase !== 'title' && total;
+  const h = show ? `<div class="path">
+      <div class="pfill" style="width:${(S.level / total) * 100}%"></div>
+      ${Array.from({ length: 9 }, (_, i) => `<span class="ptick ${S.level >= (i + 1) * 10 ? '' : 'next'}" style="left:${(i + 1) * 10}%"></span>`).join('')}
+      <div class="pmark ${S.levelPop ? 'leveled' : ''}" style="left:${((S.level - 1) / (total - 1)) * 100}%"></div>
+    </div>
+    <div class="plvl">LEVEL ${S.level} / ${total}</div>` : '';
+  if (h === lastPath) { S.levelPop = false; return; }
+  lastPath = h;
+  document.getElementById('pathwrap').innerHTML = h;
+  S.levelPop = false;
+}
+
 function renderTitle() {
   const fam = pad.info ? pad.info.family.toUpperCase() : null;
   document.getElementById('debug').innerHTML = `
     <h2>PITCHSORT</h2>
     <p class="meta">Hear the chords. Sort the notes. Left vs Right.</p>
-    <p style="margin-top:2em;animation:glow 1.6s ease-in-out infinite">PRESS ANY BUTTON — STORY</p>
-    <p class="meta">X&nbsp;=&nbsp;FREE PLAY (endless chords)</p>
+    <div class="tmodes">
+      <button class="tmode ${S.titleMode === 'story' ? 'sel' : ''}" data-mode="story">STORY<small>100 levels · curated</small></button>
+      <button class="tmode ${S.titleMode === 'free' ? 'sel' : ''}" data-mode="free">FREE PLAY<small>endless · generated</small></button>
+    </div>
+    <p style="margin-top:1.6em;animation:glow 1.6s ease-in-out infinite">◀ ▶ CHOOSE · START TO PLAY</p>
     <p class="meta">${fam ? fam + ' pad connected ✓' : 'Play with gamepad (Xbox · PlayStation · Switch Pro) or keyboard.'}</p>`;
+  for (const b of document.querySelectorAll('.tmode'))
+    b.addEventListener('click', (e) => { e.stopPropagation(); S.titleMode = b.dataset.mode; start(S.titleMode === 'free'); });
   syncControls();
 }
 addEventListener('gamepadconnected', () => { if (S.phase === 'title') renderTitle(); });

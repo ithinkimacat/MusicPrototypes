@@ -73,7 +73,68 @@ const ROWS = [
   ['C: chromatic octave', , [60, 61, 62, 63], [64, 65, 66, 67]],
 ];
 
-const SIZE_RAMP = '1x6,2x11,3x24,4x10';
+// --- helpers for the 49 hand-built 4-note rows that take the campaign to 100 ---
+const Q = { maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], dom7: [0, 4, 7, 10], hdim: [0, 3, 6, 10], sus: [0, 5, 7, 10] };
+const row = (name, ql, rl, qr, rr) => [name, undefined, Q[ql].map((i) => rl + i), Q[qr].map((i) => rr + i)];
+
+ROWS.push(
+  // 52-61: consonant 7ths, registers wide apart
+  row('C: Imaj7 | IVmaj7', 'maj7', 60, 'maj7', 65),
+  row('G: V7(low) | Imaj7', 'dom7', 55, 'maj7', 67),
+  row('F: i7(low) | IVmaj7', 'm7', 53, 'maj7', 58),
+  row('D: V7(low) | Imaj7', 'dom7', 57, 'maj7', 62),
+  row('Em: i7(low) | iv7', 'm7', 52, 'm7', 57),
+  row('Bb: Imaj7 | ii7', 'maj7', 58, 'm7', 60),
+  row('Dm: i7 | VImaj7(hi)', 'm7', 50, 'maj7', 58),
+  row('A: i7 | VImaj7', 'm7', 57, 'maj7', 65),
+  row('Eb: Imaj7 | V7', 'maj7', 63, 'dom7', 58),
+  row('G: V7(low) | IVmaj7(hi)', 'dom7', 55, 'maj7', 72),
+  // 62-71: pairs sharing 2 pitch classes (voiced across octaves = no exact dups)
+  row('C: Imaj7 | vi7(hi)', 'maj7', 60, 'm7', 69),
+  row('F: Imaj7 | iii7(low)', 'maj7', 65, 'm7', 57),
+  row('G: ii7(low) | IVmaj7(hi)', 'm7', 57, 'maj7', 72),
+  row('C: iii7(low) | Imaj7', 'm7', 52, 'maj7', 60),
+  row('Am: i7 | v7(low)', 'm7', 57, 'm7', 52),
+  row('F: IVmaj7 | vi7(hi)', 'maj7', 65, 'm7', 74),
+  row('G: Imaj7 | iii7(hi)', 'maj7', 55, 'm7', 71),
+  row('D: iii7(low) | Imaj7', 'm7', 54, 'maj7', 62), // share F# A C# pcs
+  row('C: vi7 | iii7(low)', 'm7', 57, 'm7', 52),
+  row('D: v7(low) | Imaj7', 'm7', 57, 'maj7', 62),
+  // 72-81: semitone-shifted 7ths, different qualities & voicings
+  row('C: dom7, m2 shift', 'dom7', 60, 'dom7', 61),
+  row('G: m7, m2 shift', 'm7', 67, 'm7', 68),
+  row('F: maj7, m2 shift low', 'maj7', 53, 'maj7', 54),
+  row('C: sus7, m2 shift', 'sus', 60, 'sus', 61),
+  row('A: maj7, m2 shift hi', 'maj7', 69, 'maj7', 70),
+  row('C: hdim, m2 shift', 'hdim', 59, 'hdim', 60),
+  row('Eb: m7, m2 shift', 'm7', 63, 'm7', 64),
+  row('C: maj7 | dom7, m2 apart', 'maj7', 60, 'dom7', 73),
+  row('G: dom7(low) | maj7,m2', 'dom7', 55, 'maj7', 56),
+  row('C: maj7(hi) | m7 m2 below', 'maj7', 72, 'm7', 71),
+  // 82-91: dense / interleaved clusters
+  row('C: maj7 | m7 M2 weave', 'maj7', 60, 'm7', 62),
+  row('C: maj7(low) | dom7 P4 up', 'maj7', 60, 'dom7', 65),
+  row('C: m7 | maj7 m2 above', 'm7', 60, 'maj7', 61),
+  row('C: hdim | m7 m2 below', 'hdim', 60, 'm7', 71),
+  row('G: dom7 | maj7 m2 above', 'dom7', 55, 'maj7', 56),
+  row('C: sus7(low) | maj7 m2 above', 'sus', 53, 'maj7', 61),
+  row('A: m7 | maj7 m2 above', 'm7', 57, 'maj7', 58),
+  row('C: maj7 | maj7 tritone', 'maj7', 60, 'maj7', 66),
+  row('C: hdim(low) | dom7 m2 above', 'hdim', 54, 'dom7', 61),
+  row('F: maj7(low) | m7 M2 hi', 'maj7', 60, 'm7', 72),
+  // 92-100: chromatic endgame
+  ['C: interlocked chromatic', , [60, 62, 64, 66], [61, 63, 65, 67]],
+  ['C: chromatic weave 2', , [60, 63, 65, 67], [61, 62, 64, 66]],
+  ['C: chromatic weave 3', , [60, 61, 64, 67], [62, 63, 65, 66]],
+  ['C: chromatic 8, shifted', , [61, 62, 63, 64], [65, 66, 67, 68]],
+  ['C: chromatic weave 4', , [60, 62, 65, 67], [61, 63, 64, 66]],
+  ['G: chromatic weave hi', , [67, 69, 71, 73], [68, 70, 72, 74]],
+  ['C: chromatic weave 5', , [60, 61, 63, 66], [62, 64, 65, 67]],
+  ['C: chromatic crossfade', , [60, 62, 63, 66], [61, 64, 65, 67]],
+  ['C: chromatic octave, tight', , [60, 61, 62, 64], [63, 65, 66, 67]],
+);
+
+const SIZE_RAMP = '1x6,2x11,3x24,4x59';
 const levels = ROWS.map(([name, hint, L, R], i) => {
   const n = i + 1;
   const set = new Set();
@@ -100,7 +161,7 @@ function seededShuffle(arr, seed) {
 
 // size ramp check
 const seq = levels.map((l) => l.L.length).join('');
-const want = '1'.repeat(6) + '2'.repeat(11) + '3'.repeat(24) + '4'.repeat(10);
+const want = '1'.repeat(6) + '2'.repeat(11) + '3'.repeat(24) + '4'.repeat(59);
 if (seq !== want) throw new Error(`size ramp broken (${SIZE_RAMP}):\n${seq}`);
 
 writeFileSync(new URL('./levels.json', import.meta.url), JSON.stringify({ levels }, null, 1) + '\n');

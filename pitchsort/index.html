@@ -102,6 +102,36 @@
   .cornerbtn:hover { border-color:#fff; transform:scale(1.08) }
   #ctlwrap { position:fixed; inset:0; pointer-events:none } /* out of grid flow → board stays centered */
   #ctlwrap .ctl-groups { pointer-events:auto }
+
+  /* progress path: story-mode track above the board, marker slides level → level */
+  #pathwrap { position:fixed; top:5.8em; left:50%; transform:translateX(-50%);
+              width:min(62vw, 30em); z-index:9; text-align:center }
+  .path { position:relative; height:4px; border-radius:2px; background:#ffffff12 }
+  .pfill { position:absolute; left:0; top:0; bottom:0; border-radius:2px;
+           background:linear-gradient(90deg, #ffd76a66, #ff9d2e);
+           transition:width .6s cubic-bezier(.2,1,.3,1) }
+  .ptick { position:absolute; top:-2px; width:2px; height:8px; background:#ffffff1c }
+  .ptick.next { background:#ffd76a66 }
+  .pmark { position:absolute; top:-5px; width:14px; height:14px; margin-left:-7px; border-radius:50%;
+           background:radial-gradient(circle at 35% 35%, #ffe9a8, #ffc94d 60%, #d99a1f);
+           box-shadow:0 0 12px #ffc94dee;
+           transition:left .6s cubic-bezier(.34,1.4,.64,1); animation:ppulse 1.6s ease-in-out infinite }
+  .pmark.leveled { animation:ppop .5s cubic-bezier(.34,1.56,.64,1) }
+  @keyframes ppulse { 50% { box-shadow:0 0 20px #ffd76a; transform:scale(1.15) } }
+  @keyframes ppop { 40% { transform:scale(1.8) } }
+  .plvl { margin-top:.7em; font-size:.7em; letter-spacing:.25em; color:#cbb26b }
+  @media (prefers-reduced-motion: reduce) { .pmark { animation:none } }
+  @media (max-width: 720px), (max-height: 560px) { #pathwrap { top:4.6em } }
+
+  /* title mode toggle: STORY | FREE */
+  .tmodes { display:flex; gap:.8em; justify-content:center; margin:1.2em 0 0 }
+  .tmode { background:#ffffff08; border:1px solid #ffffff1c; color:#999; border-radius:12px;
+           padding:.7em 1.4em; font:inherit; font-size:.95em; letter-spacing:.08em; cursor:pointer;
+           transition:border-color .2s, color .2s, transform .15s }
+  .tmode small { display:block; font-size:.72em; color:#666; letter-spacing:.2em; margin-top:.2em }
+  .tmode.sel { border-color:#ffd76a; color:#ffe9a8; box-shadow:0 0 18px #ffc94d33;
+               transform:scale(1.05) }
+  .tmode.sel small { color:#cbb26b }
   #help { position:fixed; inset:0; display:none; place-items:center; z-index:40;
           background:#05050899; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px) }
   #help.show { display:grid }
@@ -168,6 +198,7 @@
 </head>
 <body>
 <div id="hud"></div>
+<div id="pathwrap"></div>
 <div id="banner"></div>
 <button id="fsbtn" class="cornerbtn" title="Fullscreen [F]">&#x26F6;</button>
 <button id="helpbtn" class="cornerbtn" title="How to play [I]">i</button>
