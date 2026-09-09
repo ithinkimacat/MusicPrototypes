@@ -350,8 +350,6 @@ function combineStacks() {
 // pitch → hue: blue (low) through green/yellow to red (high)
 const midiColor = (m) => `hsl(${240 - ((m - 45) / 31) * 240}, 90%, 55%)`;
 
-const FLAME = `<svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px;margin-right:.2em"><path fill="#ff9d2e" d="M12 2c1.5 4.5-5 6.5-5 12a5 5 0 0 0 10 0c0-2.2-1.2-3.2-1.2-3.2S19 12 19 15a7 7 0 0 1-14 0C5 8 12 6.5 12 2z"/></svg>`;
-
 function noteHtml(m, k, i) {
   const cls = [
     'note',
@@ -366,17 +364,39 @@ function render() {
   const el = document.getElementById('debug');
   // arcade HUD: SCORE (glowing, left) · LEVEL + moves/stars (mid) · HI-SCORE (gold, right)
   const mult = Math.min(2, 1 + S.streak * 0.1).toFixed(1);
-  const badge = S.streak >= 1 ? `<span id="streakbadge" class="${S.streakPop ? 'pop' : ''}">${FLAME}${S.streak} <em>×${mult}</em></span>` : '';
-  const lost = S.streakLost ? `<span class="streak-lost">✕ streak ${S.streakLost} lost</span>` : '';
   const midVal = S.phase === 'graded'
     ? (S.pass ? starHtml(S.stars) : '<span class="retry">✗ RETRY — START</span>')
     : `MOVES ${S.moves}/${S.optimal}`;
-  S.streakPop = false;
   document.getElementById('hud').innerHTML = `
-    <div class="hud-cell"><span class="lbl">SCORE</span><span class="val" id="scoreval">${S.dispScore ?? S.score}</span>
-      <span class="streak-row">${badge}${lost}</span></div>
+    <div class="hud-cell"><span class="lbl">SCORE</span><span class="val" id="scoreval">${S.dispScore ?? S.score}</span></div>
     <div class="hud-cell hud-mid"><span class="lbl">${S.mode === 'free' ? 'FREE' : 'LEVEL'} ${S.level}</span><span class="val">${midVal}</span></div>
     <div class="hud-cell hud-r"><span class="lbl">HI-SCORE</span><span class="val">${S.best}</span></div>`;
+
+  // combo counter, GH/Beat Saber style: big count + ring filling toward the next multiplier tick
+  const combo = document.getElementById('combo');
+  if (S.streak >= 1) {
+    const tier = S.streak < 3 ? 0 : S.streak < 5 ? 1 : S.streak < 10 ? 2 : 3;
+    combo.dataset.tier = tier;
+    const CIRC = 2 * Math.PI * 21;
+    const frac = Math.min(1, S.streak / 10); // ring full at streak 10 (mult cap)
+    combo.innerHTML = `
+      <svg class="cring" viewBox="0 0 50 50" width="3.4em" height="3.4em">
+        <circle cx="25" cy="25" r="21" fill="none" stroke="#ffffff14" stroke-width="1.5"/>
+        <circle class="cfill" cx="25" cy="25" r="21" fill="none" stroke-width="3"
+                stroke-linecap="round" transform="rotate(-90 25 25)"
+                stroke-dasharray="${(frac * CIRC).toFixed(1)} ${CIRC.toFixed(1)}"/>
+      </svg>
+      <span class="cstack">
+        <span class="cnum ${S.streakPop ? 'pop' : ''}">${S.streak}</span>
+        <span class="clbl">×${mult} MULTI</span>
+      </span>`;
+  } else if (S.streakLost) {
+    combo.dataset.tier = '';
+    combo.innerHTML = `<span class="lost">✕ STREAK ${S.streakLost} LOST</span>`;
+  } else {
+    combo.innerHTML = ''; combo.dataset.tier = '';
+  }
+  S.streakPop = false;
   // FLIP: snapshot block positions before rebuild, animate deltas after
   const before = {};
   el.querySelectorAll('.note[data-midi]').forEach((n) => { before[n.dataset.midi] = n.getBoundingClientRect(); });

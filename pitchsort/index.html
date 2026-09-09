@@ -102,6 +102,27 @@
         box-shadow:0 0 10px #ffc94dcc; pointer-events:none; z-index:30 }
   #streakbadge { display:inline-block; color:#ffb25e; font-weight:700; letter-spacing:.08em;
                  font-size:.8em }
+  #streakbadge { display:none } /* superseded by #combo */
+  /* Guitar Hero / Beat Saber style combo: big number, progress ring, tier glow */
+  #combo { position:fixed; top:14%; left:0; right:0; display:flex; align-items:center;
+           justify-content:center; gap:.5em; pointer-events:none; z-index:9 }
+  #combo .cring { display:block }
+  #combo .cnum { font-size:3em; font-weight:900; letter-spacing:.02em; line-height:1;
+                 display:inline-block }
+  #combo .clbl { font-size:.6em; letter-spacing:.3em; color:#888; font-weight:600 }
+  #combo .cstack { display:flex; flex-direction:column; align-items:flex-start; gap:.15em }
+  #combo .cnum.pop { animation:spop .3s cubic-bezier(.34,1.56,.64,1) }
+  /* tier colors: blue -> gold -> fire orange -> magenta blaze */
+  #combo[data-tier="0"] .cnum { color:#fff; text-shadow:0 0 18px #7ec8ff99 }
+  #combo[data-tier="0"] .cfill { stroke:#7ec8ff }
+  #combo[data-tier="1"] .cnum { color:#ffe9a8; text-shadow:0 0 22px #ffd76acc }
+  #combo[data-tier="1"] .cfill { stroke:#ffd76a }
+  #combo[data-tier="2"] .cnum { color:#ffc38a; text-shadow:0 0 26px #ff9d2edd }
+  #combo[data-tier="2"] .cfill { stroke:#ff9d2e }
+  #combo[data-tier="3"] .cnum { color:#ffc6ec; text-shadow:0 0 34px #ff5ec4ee, 0 0 60px #ff5ec488 }
+  #combo[data-tier="3"] .cfill { stroke:#ff5ec4; filter:drop-shadow(0 0 6px #ff5ec4) }
+  #combo .lost { color:#ff6b6b; font-weight:800; font-size:1.1em; letter-spacing:.15em;
+                 animation:slost 1.8s ease-out forwards }
   #streakbadge em { font-style:normal; color:#f7d774 }
   #streakbadge.pop { animation:spop .3s cubic-bezier(.34,1.56,.64,1) }
   @keyframes spop { 40% { transform:scale(1.5) } }
@@ -117,6 +138,7 @@
 </head>
 <body>
 <div id="hud"></div>
+<div id="combo"></div>
 <div id="banner"></div>
 <div id="debug">Connect gamepad, press any button…</div>
 <script type="module" src="game.js"></script>
